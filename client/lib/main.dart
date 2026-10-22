@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 
 import 'state.dart';
 import 'theme.dart';
-import 'flclash/fade_box.dart';
 import 'flclash/navigation_dock.dart';
 import 'pages/compose_page.dart';
 import 'pages/home_page.dart';
@@ -187,24 +186,39 @@ class _ShellState extends State<Shell> {
                 bottom: 0,
                 child: Stack(
                   children: <Widget>[
-                    NavigationDock(
-                      destinations: _destinations,
-                      selectedIndex: index,
-                      // 按钮直径 + 与底栏的间距（对比参考图后放宽到 24）
-                      trailingSpace: showCompose ? 86 : 0,
-                      onSelected: (i) {
-                        if (i != index) _goTo(i);
-                      },
+                    // 底栏宽度必须渐变：NavigationDock 内部用 context.size 算 pitch/lens，
+                    // 宽度一变就立刻按新宽度重排，所以让位空间本身要做补间，
+                    // 否则切换分栏时底栏会「啪」地变宽/变窄。
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(end: showCompose ? 86 : 0),
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, space, _) => NavigationDock(
+                        destinations: _destinations,
+                        selectedIndex: index,
+                        trailingSpace: space,
+                        onSelected: (i) {
+                          if (i != index) _goTo(i);
+                        },
+                      ),
                     ),
                     Positioned(
                       right: 21,
                       bottom: NavigationDock.bottomMarginOf(context),
-                      child: FadeScaleBox(
-                        alignment: Alignment.centerRight,
-                        child: showCompose
-                            ? _composeButton(context)
-                            : const SizedBox.shrink(
-                                key: ValueKey('compose_gone')),
+                      // 与底栏补间同一时长/曲线，两边同步收放，才不会一边先跳。
+                      child: AnimatedOpacity(
+                        opacity: showCompose ? 1 : 0,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                        child: AnimatedScale(
+                          scale: showCompose ? 1 : 0.4,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOutCubic,
+                          child: IgnorePointer(
+                            ignoring: !showCompose,
+                            child: _composeButton(context),
+                          ),
+                        ),
                       ),
                     ),
                   ],
