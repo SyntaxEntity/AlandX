@@ -64,6 +64,11 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int get index => AppState.instance.tabIndex;
 
+  /// 页面随底栏位置横向移动。用 `jumpTo` 而不是 `animateToPage`：
+  /// 位置由 Deck 的 `_pos` 唯一驱动，拖动时跟手、吸附时一起滑，不会出现两套动画打架。
+  late final PageController _pc =
+      PageController(initialPage: AppState.instance.tabIndex);
+
   static const List<Widget> _pages = <Widget>[
     HomePage(),
     ForumsPage(),
@@ -84,6 +89,22 @@ class _ShellState extends State<Shell> {
       MaterialPageRoute<bool>(builder: (_) => const ComposePage()),
     );
     if (ok == true) AppState.instance.loadHome(reset: true);
+  }
+
+  /// Deck 的位置变化 → 页面同步位移。
+  void _syncPageTo(double pos) {
+    if (!_pc.hasClients) return;
+    final width = _pc.position.viewportDimension;
+    if (width <= 0) return;
+    final target = pos * width;
+    if ((_pc.offset - target).abs() < 0.5) return;
+    _pc.jumpTo(target);
+  }
+
+  @override
+  void dispose() {
+    _pc.dispose();
+    super.dispose();
   }
 
   @override
@@ -108,10 +129,14 @@ class _ShellState extends State<Shell> {
               Positioned.fill(
                 child: SafeArea(
                   bottom: false,
-                  child: Padding(
-                    // 页面内容整体停在 Deck 上沿，避免最后一条被悬浮栏压住。
-                    padding: EdgeInsets.only(bottom: NavigationDock.insetOf(context) - vp),
-                    child: IndexedStack(index: index, children: _pages),
+                  // 关键：不给整页加底部内边距。
+                  // 内容可以一直滚到 Deck 下方（这才是「悬浮」），
+                  // 末端留白交给各页面自己的 NavigationDock.insetOf。
+                  child: PageView.builder(
+                    controller: _pc,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _pages.length,
+                    itemBuilder: (_, i) => _KeepAlivePage(child: _pages[i]),
                   ),
                 ),
               ),
@@ -155,6 +180,7 @@ class _ShellState extends State<Shell> {
                 child: NavigationDock(
                   destinations: _destinations,
                   selectedIndex: index,
+                  onProgress: _syncPageTo,
                   onSelected: (i) {
                     if (i != index) AppState.instance.setTab(i);
                   },
@@ -195,6 +221,29 @@ class _ShellState extends State<Shell> {
         ),
       ),
     );
+  }
+}
+
+/// PageView 会销毁远离视口的页面，切回来时列表回到顶部、图片重新解码。
+/// 这里保活，行为和原来的 IndexedStack 一致。
+class _KeepAlivePage extends StatefulWidget {
+  const _KeepAlivePage({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 

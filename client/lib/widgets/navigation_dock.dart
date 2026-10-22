@@ -19,12 +19,19 @@ class NavigationDock extends StatefulWidget {
     required this.destinations,
     required this.selectedIndex,
     required this.onSelected,
+    this.onProgress,
     this.accent,
   });
 
   final List<NavigationDockDestination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+
+  /// 位置变化回调，单位是「第几项」，1.4 表示在一二项之间。
+  ///
+  /// 拖动、点击、吸附全过程都会回调，用来驱动外层 `PageView` 同步横向位移，
+  /// 这样手指在底栏上滑动时页面是跟着走的，而不是松手后才跳过去。
+  final ValueChanged<double>? onProgress;
 
   /// 选中态配色，缺省跟随主题 primary。
   final Color? accent;
@@ -59,7 +66,7 @@ class _NavigationDockState extends State<NavigationDock>
 
   late final AnimationController _snap = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 320),
+    duration: const Duration(milliseconds: 300),
   );
 
   int get _count => widget.destinations.length;
@@ -72,8 +79,10 @@ class _NavigationDockState extends State<NavigationDock>
   }
 
   void _onTick() {
+    // FlClash 切栏用 300ms + easeOut 系曲线，这里对齐，避免「弹一下」的廉价感。
     final t = Curves.easeOutCubic.transform(_snap.value);
     setState(() => _pos = _animFrom + (_animTo - _animFrom) * t);
+    widget.onProgress?.call(_pos);
   }
 
   @override
@@ -182,6 +191,7 @@ class _NavigationDockState extends State<NavigationDock>
           .clamp(0.0, (_count - 1).toDouble())
           .toDouble();
     });
+    widget.onProgress?.call(_pos);
     // 跨过一整格给一次轻震动，跟系统 tab 切换手感一致。
     if (before.floor() != _pos.floor() || before.ceil() != _pos.ceil()) {
       HapticFeedback.selectionClick();
@@ -234,34 +244,40 @@ class _DockItem extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Center(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
+          // 不能用 AnimatedContainer：拖动要跟手，任何隐式动画都会让指示器慢半拍。
+          child: Container(
             height: 46,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: accent.withOpacity(0.14 * influence),
+              color: accent.withOpacity(0.13 * influence),
               borderRadius: BorderRadius.circular(22),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Icon(destination.icon, size: 21, color: fg),
-                // 文字用 ClipRect + Align 横向「拉」出来，不引起布局跳变。
+                Transform.scale(
+                  scale: 1 + 0.05 * influence,
+                  child: Icon(destination.icon, size: 21, color: fg),
+                ),
+                // 文字用 ClipRect + Align 横向「拉」出来，不引起布局跳变；
+                // 同时叠一层透明度，避免展开瞬间像被刀切出来。
                 ClipRect(
                   child: Align(
                     alignment: Alignment.centerLeft,
                     widthFactor: influence,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 7),
-                      child: Text(
-                        destination.label,
-                        maxLines: 1,
-                        softWrap: false,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: fg,
+                    child: Opacity(
+                      opacity: influence,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 7),
+                        child: Text(
+                          destination.label,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: fg,
+                          ),
                         ),
                       ),
                     ),

@@ -31,7 +31,8 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (context, _) {
         final wide = MediaQuery.sizeOf(context).width >= 980;
         return ListView(
-          padding: EdgeInsets.fromLTRB(wide ? 32 : 16, 26, wide ? 32 : 16, 90),
+          padding: EdgeInsets.fromLTRB(wide ? 32 : 16, 26, wide ? 32 : 16,
+              NavigationDock.insetOf(context) + 8),
           children: <Widget>[
             Center(
               child: ConstrainedBox(

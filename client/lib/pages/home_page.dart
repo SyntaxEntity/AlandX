@@ -90,8 +90,8 @@ class _HomePageState extends State<HomePage> {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 980),
                     child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                          wide ? 32 : 16, 4, wide ? 32 : 16, 20),
+                      padding: EdgeInsets.fromLTRB(wide ? 32 : 16, 4,
+                          wide ? 32 : 16, NavigationDock.insetOf(context) + 8),
                       child: _footer(context),
                     ),
                   ),
