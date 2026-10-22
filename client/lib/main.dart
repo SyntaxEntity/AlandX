@@ -138,8 +138,6 @@ class _ShellState extends State<Shell> {
       builder: (context, _) {
         if (wide) return _buildWide(context);
 
-        final scheme = Theme.of(context).colorScheme;
-
         return Scaffold(
           backgroundColor: kCanvas,
           body: Stack(
@@ -158,25 +156,20 @@ class _ShellState extends State<Shell> {
                 ),
               ),
 
-              // 发串按钮：沿用 FlClash 仪表盘「启动」按钮的 FadeScaleBox——
-              // 切换分栏时旧按钮缩小淡出、切回来放大淡入，锚点钉在右侧，
-              // 不做位移（之前那套「沉进 deck」是我自己编的，不是 FlClash 的行为）。
+              // 发串按钮：位置与 FlClash 的「启动」按钮一致——挂在顶部栏右侧，
+              // 和 Deck 分处屏幕两端，不贴合、不遮让、不联动位移。
+              // 显隐走 FadeScaleBox（缩放 0.4↔1 + 淡入淡出，锚点 centerRight）。
               Positioned(
-                right: 20,
-                bottom: NavigationDock.insetOf(context) + 8,
+                right: 16,
+                top: MediaQuery.paddingOf(context).top + 20,
                 child: FadeScaleBox(
                   alignment: Alignment.centerRight,
                   child: index == 0
-                      ? FloatingActionButton.extended(
-                          key: const ValueKey('compose_fab'),
-                          heroTag: 'compose',
+                      ? FilledButton.icon(
+                          key: const ValueKey('compose_btn'),
                           onPressed: _compose,
-                          elevation: 2,
-                          highlightElevation: 6,
-                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
                           label: const Text('发串'),
-                          backgroundColor: scheme.primary,
-                          foregroundColor: scheme.onPrimary,
                         )
                       : const SizedBox.shrink(key: ValueKey('compose_gone')),
                 ),
