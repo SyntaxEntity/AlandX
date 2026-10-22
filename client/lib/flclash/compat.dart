@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 // 移植自 FlClash（https://github.com/chen08209/FlClash）
 // Copyright (C) FlClash contributors
 // 原项目以 GNU General Public License v3.0 分发；本项目据此同样以 GPL-3.0 分发。
@@ -195,3 +197,29 @@ class LiquidGlass extends StatelessWidget {
   @override
   Widget build(BuildContext context) => child ?? const SizedBox.shrink();
 }
+
+// ---------------------------------------------------------------------------
+// 把 FlClash 依赖的 material fork 扩展补齐到官方 Flutter 3.24
+// ---------------------------------------------------------------------------
+
+/// 原实现用 `SpringDescription.withDurationAndBounce(duration:, bounce:)`
+/// （material_ui 的扩展）。官方 Flutter 没有，这里按「指定时长 + 回弹系数」
+/// 反推阻尼谐振子参数，行为等价。
+SpringDescription springFromTiming({
+  required Duration duration,
+  double bounce = 0,
+}) {
+  const mass = 1.0;
+  final seconds = duration.inMicroseconds / 1e6;
+  // 回弹越大阻尼比越小；bounce=0 视为临界阻尼
+  final ratio = (1 - bounce.clamp(0.0, 0.98));
+  // 让周期与给定时长同量级（0.7 是经验系数，使 settle 时间接近 duration）
+  final omega = 2 * 3.141592653589793 / (seconds * 0.7);
+  final stiffness = omega * omega * mass;
+  final damping = 2 * ratio * math.sqrt(stiffness * mass);
+  return SpringDescription(mass: mass, stiffness: stiffness, damping: damping);
+}
+
+/// 焦点环：material_ui 提供的辅助方法。
+BorderSide focusRingSide(ColorScheme colorScheme) =>
+    BorderSide(color: colorScheme.primary, width: 2);

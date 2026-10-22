@@ -4,6 +4,7 @@
 // 本文件保留原实现，仅替换图标类型与 Liquid Glass 依赖，差异集中在 compat.dart。
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
@@ -50,7 +51,7 @@ const double _overdrag = 0.35;
 const double _pullLimit = 7 / 32;
 const double _pullStretch = 0.5;
 const _flingProjection = Duration(milliseconds: 100);
-final _trackSpring = SpringDescription.withDurationAndBounce(
+final _trackSpring = springFromTiming(
   duration: const Duration(milliseconds: 120),
 );
 final _pressSpring = SpringDescription.withDampingRatio(
@@ -63,10 +64,10 @@ final _followSpring = SpringDescription.withDampingRatio(
   stiffness: 1024,
   ratio: 0.9,
 );
-final _liftSpring = SpringDescription.withDurationAndBounce(
+final _liftSpring = springFromTiming(
   duration: const Duration(milliseconds: 250),
 );
-final _travelSpring = SpringDescription.withDurationAndBounce(
+final _travelSpring = springFromTiming(
   duration: const Duration(milliseconds: 400),
   bounce: 0.15,
 );
@@ -75,21 +76,21 @@ final _jellySpring = SpringDescription.withDampingRatio(
   stiffness: 100,
   ratio: 0.4,
 );
-final _settleSpring = SpringDescription.withDurationAndBounce(
+final _settleSpring = springFromTiming(
   duration: const Duration(milliseconds: 500),
   bounce: 0.32,
 );
-final _hoverSpring = SpringDescription.withDurationAndBounce(
+final _hoverSpring = springFromTiming(
   duration: const Duration(milliseconds: 260),
   bounce: 0.18,
 );
-final _fadeSpring = SpringDescription.withDurationAndBounce(
+final _fadeSpring = springFromTiming(
   duration: const Duration(milliseconds: 200),
 );
-final _glowInSpring = SpringDescription.withDurationAndBounce(
+final _glowInSpring = springFromTiming(
   duration: const Duration(milliseconds: 100),
 );
-final _glowOutSpring = SpringDescription.withDurationAndBounce(
+final _glowOutSpring = springFromTiming(
   duration: const Duration(milliseconds: 500),
 );
 
@@ -371,7 +372,7 @@ class NavigationDock extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       height: _shadowRoom + height + _bottomMarginOf(context),
-      child: RepaintBoundary(child: LayoutBuilder(builder: (_, _) => dock)),
+      child: RepaintBoundary(child: LayoutBuilder(builder: (_, __) => dock)),
     );
   }
 }
@@ -430,9 +431,11 @@ class ElasticPress extends StatefulWidget {
   /// Leaves a press on the button inside to the swell alone.
   static const buttonStyle = ButtonStyle(
     splashFactory: NoSplash.splashFactory,
-    overlayColor: WidgetStateMapper<Color?>({
-      WidgetState.pressed: Colors.transparent,
-    }),
+    overlayColor: WidgetStateProperty.resolveWith<Color?>(
+      (states) => states.contains(WidgetState.pressed)
+          ? Colors.transparent
+          : null,
+    ),
   );
 
   final bool enabled;
@@ -727,7 +730,7 @@ class _RenderPressTransform extends RenderProxyBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (child == null || size.isEmpty || (_lift == 0 && _pull == .zero)) {
+    if (child == null || size.isEmpty || (_lift == 0 && _pull == Offset.zero)) {
       layer = null;
       super.paint(context, offset);
       return;
@@ -1226,7 +1229,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
                         if (widget.destinations.isNotEmpty)
                           AnimatedBuilder(
                             animation: _motion,
-                            builder: (_, _) => _Lens(
+                            builder: (_, __) => _Lens(
                               rect: lensRect(),
                               lift: _lift.value,
                               glass: glass,
@@ -1235,7 +1238,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
                         if (widget.destinations.isNotEmpty)
                           AnimatedBuilder(
                             animation: _hoverMotion,
-                            builder: (_, _) => _HoverHighlight(
+                            builder: (_, __) => _HoverHighlight(
                               start:
                                   layout.inset +
                                   (_hover.value + 0.5) * layout.pitch -
@@ -1247,7 +1250,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
                         if (glass && widget.destinations.isNotEmpty)
                           AnimatedBuilder(
                             animation: _motion,
-                            builder: (_, _) =>
+                            builder: (_, __) =>
                                 _GlassLens(rect: lensRect(), lift: _lift.value),
                           ),
                         items(lensed ? _LensPart.outside : _LensPart.both),
@@ -1349,7 +1352,7 @@ class _Lens extends StatelessWidget {
       child: DecoratedBox(
         decoration: ShapeDecoration(
           color: glass
-              ? platter.withOpacity(platter.a * (1 - lifted))
+              ? platter.withOpacity((platter.alpha / 255) * (1 - lifted))
               : Color.alphaBlend(
                   colorScheme.onSurface.withOpacity(0.08 * lifted),
                   SurfaceLevel.floatingOf(
@@ -1547,11 +1550,13 @@ class _FloatingBarItemState extends State<_FloatingBarItem> {
         LiquidGlassScope.qualityOf(context) == LiquidGlassQuality.standard) {
       // Without a pane of its own the copy takes the light that one adds.
       final brightness = LiquidGlassStyle.lensContent(colorScheme).brightness;
-      tint = Color.from(
-        alpha: tint.a,
-        red: math.min(tint.r * brightness, 1),
-        green: math.min(tint.g * brightness, 1),
-        blue: math.min(tint.b * brightness, 1),
+      // Flutter 3.27 的 Color.from 在这里不存在，用 ARGB 逐通道还原
+      int ch(double v) => (v.clamp(0.0, 1.0) * 255).round();
+      tint = Color.fromARGB(
+        (tint.alpha / 255 * 255).round(),
+        ch((tint.red / 255) * brightness),
+        ch((tint.green / 255) * brightness),
+        ch((tint.blue / 255) * brightness),
       );
     }
     final content = _LensTint(
@@ -1611,7 +1616,7 @@ class _FloatingBarItemState extends State<_FloatingBarItem> {
             color: _focused
                 ? colorScheme.onSurface.withOpacity(0.1)
                 : Colors.transparent,
-            shape: AppShape.full.copyWith(
+            shape: StadiumBorder(
               side: _focused ? focusRingSide(colorScheme) : BorderSide.none,
             ),
           ),
