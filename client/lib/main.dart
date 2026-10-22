@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import 'state.dart';
+import 'widgets/navigation_dock.dart';
 import 'pages/compose_page.dart';
 import 'pages/home_page.dart';
 import 'pages/forums_page.dart';
@@ -46,11 +47,12 @@ ThemeData buildTheme(Color seed) {
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: <TargetPlatform, PageTransitionsBuilder>{
-        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        // 各平台走各自的系统转场，避免「一眼像网页」。
+        TargetPlatform.android: ZoomPageTransitionsBuilder(),
         TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
         TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+        TargetPlatform.windows: ZoomPageTransitionsBuilder(),
       },
     ),
   );
@@ -103,70 +105,129 @@ class _ShellState extends State<Shell> {
     SettingsPage(),
   ];
 
+  static const List<NavigationDockDestination> _destinations =
+      <NavigationDockDestination>[
+    NavigationDockDestination(icon: Icons.dynamic_feed_rounded, label: '时间线'),
+    NavigationDockDestination(icon: Icons.grid_view_rounded, label: '版面'),
+    NavigationDockDestination(icon: Icons.bookmark_rounded, label: '订阅'),
+    NavigationDockDestination(icon: Icons.tune_rounded, label: '设置'),
+  ];
+
+  Future<void> _compose() async {
+    final ok = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(builder: (_) => const ComposePage()),
+    );
+    if (ok == true) AppState.instance.loadHome(reset: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 980;
     final state = AppState.instance;
 
-    final body = Row(
-      children: <Widget>[
-        if (wide)
-          _Rail(
-            index: index,
-            onTap: (i) => AppState.instance.setTab(i),
-          ),
-        Expanded(
-          child: IndexedStack(index: index, children: _pages),
-        ),
-      ],
-    );
-
     return AnimatedBuilder(
       animation: state,
-      builder: (context, _) => Scaffold(
-        body: SafeArea(child: body),
-        floatingActionButton: index == 0
-            ? FloatingActionButton.extended(
-                onPressed: () async {
-                  final ok = await Navigator.of(context).push<bool>(
-                    MaterialPageRoute<bool>(
-                        builder: (_) => const ComposePage()),
-                  );
-                  if (ok == true) AppState.instance.loadHome(reset: true);
-                },
-                icon: const Icon(Icons.edit_outlined, size: 20),
-                label: const Text('发串'),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-              )
-            : null,
-        bottomNavigationBar: wide
-            ? null
-            : NavigationBar(
-                selectedIndex: index,
-                onDestinationSelected: (i) => AppState.instance.setTab(i),
-                height: 72,
-                backgroundColor: Colors.white,
-                indicatorColor: Theme.of(context).colorScheme.primary,
-                labelBehavior:
-                    NavigationDestinationLabelBehavior.onlyShowSelected,
-                destinations: <Widget>[
-                  _dest(Icons.dynamic_feed_rounded, '时间线'),
-                  _dest(Icons.grid_view_rounded, '版面'),
-                  _dest(Icons.bookmark_rounded, '订阅'),
-                  _dest(Icons.tune_rounded, '设置'),
-                ],
+      builder: (context, _) {
+        if (wide) return _buildWide(context);
+
+        final scheme = Theme.of(context).colorScheme;
+        final vp = MediaQuery.viewPaddingOf(context).bottom;
+        final showFab = index == 0;
+        final dockBottom = NavigationDock.margin + vp;
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF3F5FB),
+          body: Stack(
+            children: <Widget>[
+              Positioned.fill(
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    // 页面内容整体停在 Deck 上沿，避免最后一条被悬浮栏压住。
+                    padding: EdgeInsets.only(bottom: NavigationDock.insetOf(context) - vp),
+                    child: IndexedStack(index: index, children: _pages),
+                  ),
+                ),
               ),
-      ),
+
+              // 发串按钮：在第 0 栏浮在 Deck 之上；切到别的栏时下沉、缩小并淡出，
+              // 视觉上是「收进 Deck 里」，因为 Deck 在 Stack 中排在它后面，会盖住它。
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                right: showFab ? 20 : 40,
+                bottom: showFab ? dockBottom + NavigationDock.height + 14 : dockBottom + 12,
+                child: IgnorePointer(
+                  ignoring: !showFab,
+                  child: AnimatedOpacity(
+                    opacity: showFab ? 1 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    child: AnimatedScale(
+                      scale: showFab ? 1 : 0.32,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      child: FloatingActionButton.extended(
+                        heroTag: 'compose',
+                        onPressed: _compose,
+                        elevation: 2,
+                        highlightElevation: 6,
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        label: const Text('发串'),
+                        backgroundColor: scheme.primary,
+                        foregroundColor: scheme.onPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              Positioned(
+                left: NavigationDock.margin,
+                right: NavigationDock.margin,
+                bottom: dockBottom,
+                child: NavigationDock(
+                  destinations: _destinations,
+                  selectedIndex: index,
+                  onSelected: (i) {
+                    if (i != index) AppState.instance.setTab(i);
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  NavigationDestination _dest(IconData icon, String label) {
-    final scheme = Theme.of(context).colorScheme;
-    return NavigationDestination(
-      icon: Icon(icon, color: scheme.onSurfaceVariant),
-      selectedIcon: Icon(icon, color: scheme.onPrimary),
-      label: label,
+  /// 宽屏保留侧栏：桌面端横向空间足够，悬浮底栏反而浪费高度。
+  Widget _buildWide(BuildContext context) {
+    final state = AppState.instance;
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F5FB),
+      body: SafeArea(
+        child: Stack(
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                _Rail(index: index, onTap: (i) => state.setTab(i)),
+                Expanded(child: IndexedStack(index: index, children: _pages)),
+              ],
+            ),
+            Positioned(
+              right: 28,
+              bottom: 28,
+              child: FloatingActionButton.extended(
+                heroTag: 'compose_wide',
+                onPressed: _compose,
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                label: const Text('发串'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

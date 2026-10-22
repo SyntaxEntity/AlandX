@@ -91,6 +91,8 @@ lib/
 ├── picker.dart            选图与压缩
 ├── state.dart             全局状态：主题、当前来源、时间线分页
 ├── widgets.dart           卡片、头像、正文 HTML 渲染、骨架屏
+├── widgets/
+│   └── navigation_dock.dart  悬浮底栏（选中项展开、可横向滑动切换）
 └── pages/
     ├── home_page.dart     时间线（Hero + 圆环刷新 + 列表）
     ├── forums_page.dart   版面（分类 + 网格）

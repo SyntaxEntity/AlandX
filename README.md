@@ -36,6 +36,7 @@ git push origin v0.1.0
 ```
 client/            Flutter 工程（仓库里只有源码，平台目录由 flutter create 生成）
 preview.html       单文件静态设计预览，双击即看
+docs/              开发状态与路线图
 .github/workflows  build：analyze + Android arm64 + Linux x64
                    release：推送 v* 标签时出包并发布
 ```
