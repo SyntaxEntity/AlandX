@@ -190,8 +190,8 @@ class _ShellState extends State<Shell> {
                     NavigationDock(
                       destinations: _destinations,
                       selectedIndex: index,
-                      // 按钮直径 + 与底栏的间距
-                      trailingSpace: showCompose ? 72 : 0,
+                      // 按钮直径 + 与底栏的间距（对比参考图后放宽到 24）
+                      trailingSpace: showCompose ? 86 : 0,
                       onSelected: (i) {
                         if (i != index) _goTo(i);
                       },
