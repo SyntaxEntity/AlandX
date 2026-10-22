@@ -1,0 +1,31 @@
+# 内部工作目录（记忆、会话产物），不进仓库
+.workbuddy/
+
+# 内部评估文档，按需再决定是否公开
+X岛客户端可行性评估.md
+
+# 系统垃圾
+.DS_Store
+*.log
+.Trash-0/
+
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+
+# 平台目录由 `flutter create` 生成
+client/android/
+client/ios/
+client/linux/
+client/macos/
+client/windows/
+client/web/
+client/test/
+
+# 临时文件
+*.zip
+*.tar.xz

@@ -1,0 +1,87 @@
+name: build
+
+# analyze + Android arm64-v8a + Linux x86_64，三路并行
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client/**'
+      - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - 'client/**'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: client
+
+jobs:
+  analyze:
+    name: analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+      - name: scaffold platform folders
+        run: |
+          flutter create --org dev.xd --platforms=android,linux .
+          rm -f test/widget_test.dart
+      - run: flutter pub get
+      - run: flutter analyze
+
+  android-arm64:
+    name: android arm64-v8a
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+      - name: scaffold platform folders
+        run: |
+          flutter create --org dev.xd --platforms=android .
+          rm -f test/widget_test.dart
+      - run: flutter pub get
+      - name: build apk
+        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xd-client-android-arm64
+          path: client/build/app/outputs/flutter-apk/*arm64-v8a*.apk
+          if-no-files-found: error
+
+  linux-x64:
+    name: linux x86_64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install desktop deps
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev ninja-build
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+      - name: scaffold platform folders
+        run: |
+          flutter create --org dev.xd --platforms=linux .
+          rm -f test/widget_test.dart
+      - run: flutter config --enable-linux-desktop
+      - run: flutter pub get
+      - run: flutter build linux --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xd-client-linux-x64
+          path: client/build/linux/x64/release/bundle
+          if-no-files-found: error

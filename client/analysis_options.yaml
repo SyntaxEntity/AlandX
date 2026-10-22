@@ -1,0 +1,7 @@
+# 只保留编译器级诊断（错误/警告），不启用风格类 lint。
+# 原因：CI 的 `flutter analyze` 会把 info 级别的 lint 也当失败，
+# 而本项目更在意「能不能编译」，不是「const 用得够不够多」。
+analyzer:
+  exclude:
+    - build/**
+    - .dart_tool/**
