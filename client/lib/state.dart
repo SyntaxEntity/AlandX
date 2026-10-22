@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api.dart';
 import 'cache.dart';
 import 'cookies.dart';
+import 'draft.dart';
 import 'models.dart';
 
 /// 全局状态：只保留跨页面共享的部分（主题、当前来源、时间线数据）。
@@ -27,6 +28,9 @@ class AppState extends ChangeNotifier {
 
   Color seed = const Color(0xFF3D5BFE);
   String uuid = '';
+
+  /// 未登录提示是否已被用户关掉（持久化，别每次都烦人）。
+  bool anonHintDismissed = false;
 
   /// 底部/侧边导航的当前页，放在全局是为了让「版面 → 串列表」能自动切页。
   int tabIndex = 0;
@@ -63,10 +67,12 @@ class AppState extends ChangeNotifier {
     _prefs = await SharedPreferences.getInstance();
     await CacheStore.instance.init(_prefs!);
     await CookieStore.instance.init(_prefs!);
+    await DraftStore.instance.init(_prefs!);
     CookieStore.instance.addListener(_onCookieChanged);
     final savedSeed = _prefs!.getInt('seed');
     if (savedSeed != null) seed = Color(savedSeed);
     uuid = _prefs!.getString('uuid') ?? '';
+    anonHintDismissed = _prefs!.getBool('anonHintDismissed') ?? false;
     if (uuid.isEmpty) {
       uuid = _newUuid();
       await _prefs!.setString('uuid', uuid);
@@ -91,6 +97,13 @@ class AppState extends ChangeNotifier {
     seed = c;
     notifyListeners();
     await _prefs?.setInt('seed', c.value);
+  }
+
+  Future<void> dismissAnonHint() async {
+    if (anonHintDismissed) return;
+    anonHintDismissed = true;
+    notifyListeners();
+    await _prefs?.setBool('anonHintDismissed', true);
   }
 
   void clearCache() {

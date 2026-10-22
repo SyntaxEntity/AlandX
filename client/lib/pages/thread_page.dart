@@ -28,10 +28,24 @@ class _ThreadPageState extends State<ThreadPage> {
   String? _error;
   int _page = 1;
 
+  final ScrollController _scroll = ScrollController();
+
+  /// 每个楼层的锚点，用于 `>>No.xxx` 跳转定位。
+  final Map<int, GlobalKey> _floorKeys = <int, GlobalKey>{};
+
+  /// 刚跳过去的楼层高亮一下，否则用户不知道落点在哪。
+  int? _flashId;
+
   @override
   void initState() {
     super.initState();
     _load(1, reset: true);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
   }
 
   Future<void> _load(int page, {bool reset = false}) async {
@@ -80,6 +94,51 @@ class _ThreadPageState extends State<ThreadPage> {
     await _load(1, reset: true);
   }
 
+  /// 点 `>>No.xxx`：优先滚到本串对应楼层；不在已加载范围就再翻几页找；
+  /// 实在找不到才提示，不再像以前那样直接开一个新串页面。
+  Future<void> _onQuote(int id) async {
+    if (_op?.id == id) {
+      if (_scroll.hasClients) {
+        await _scroll.animateTo(
+          0,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      return;
+    }
+
+    if (!_replies.any((p) => p.id == id)) {
+      var rounds = 0;
+      while (_hasMore && rounds < 3 && !_replies.any((p) => p.id == id)) {
+        rounds++;
+        final before = _replies.length;
+        await _load(_page + 1);
+        if (_replies.length == before) break;
+      }
+    }
+
+    if (!_replies.any((p) => p.id == id)) {
+      _toast('No.$id 不在这几页里，可能更靠后');
+      return;
+    }
+
+    setState(() => _flashId = id);
+    // 等一帧，确保新建的 GlobalKey 已经挂到渲染树上
+    await WidgetsBinding.instance.endOfFrame;
+    final ctx = _floorKeys[id]?.currentContext;
+    if (ctx != null) {
+      await Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        alignment: 0.08,
+      );
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 1400));
+    if (mounted) setState(() => _flashId = null);
+  }
+
   Future<void> _share() async {
     final url = 'https://www.nmbxd1.com/t/${widget.threadId}';
     await Clipboard.setData(ClipboardData(text: url));
@@ -110,7 +169,7 @@ class _ThreadPageState extends State<ThreadPage> {
     final payload = await showModalBottomSheet<_ReplyPayload>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: kCanvas,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -148,15 +207,15 @@ class _ThreadPageState extends State<ThreadPage> {
                 autofocus: true,
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: const Color(0xFFF8F9FF),
+                  fillColor: kChip,
                   hintText: '回复内容…',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFE5E8F1)),
+                    borderSide: const BorderSide(color: kOutline),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFE5E8F1)),
+                    borderSide: const BorderSide(color: kOutline),
                   ),
                 ),
               ),
@@ -173,8 +232,8 @@ class _ThreadPageState extends State<ThreadPage> {
                           _toast(e.message);
                         }
                       },
-                      icon: const Icon(Icons.image_outlined, size: 17),
-                      label: const Text('图片'),
+                      icon: Icon(Icons.image_outlined, size: 17),
+                      label: Text('图片'),
                     )
                   else ...<Widget>[
                     ClipRRect(
@@ -182,12 +241,12 @@ class _ThreadPageState extends State<ThreadPage> {
                       child: Image.memory(image!.bytes,
                           width: 46, height: 46, fit: BoxFit.cover),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Text('${image!.name} · ${image!.sizeKb}KB',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 11.5, color: kInk3)),
                     ),
                     IconButton(
@@ -240,11 +299,11 @@ class _ThreadPageState extends State<ThreadPage> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF3F5FB),
+        backgroundColor: kCanvas,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Column(
@@ -252,27 +311,27 @@ class _ThreadPageState extends State<ThreadPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(op == null ? '串' : _state.forumName(op.fid),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13, fontWeight: FontWeight.w600)),
             Text('No.${widget.threadId}',
-                style: const TextStyle(fontSize: 11, color: kInk3)),
+                style: TextStyle(fontSize: 11, color: kInk3)),
           ],
         ),
         actions: <Widget>[
           IconButton(
             tooltip: '复制链接',
-            icon: const Icon(Icons.ios_share_rounded, size: 20),
+            icon: Icon(Icons.ios_share_rounded, size: 20),
             onPressed: _share,
           ),
           Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: EdgeInsets.only(right: 12),
             child: TextButton(
               onPressed: _toggleOnlyPo,
               style: TextButton.styleFrom(
                 backgroundColor:
                     _onlyPo ? scheme.primary : Colors.white,
                 foregroundColor: _onlyPo ? Colors.white : kInk2,
-                minimumSize: const Size(44, 34),
+                minimumSize: Size(44, 34),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(
@@ -296,6 +355,23 @@ class _ThreadPageState extends State<ThreadPage> {
     );
   }
 
+  /// 给楼层包一层锚点容器：既是 `ensureVisible` 的落点，也负责跳转后的短暂高亮。
+  Widget _floor(int id, Widget child) {
+    final key = _floorKeys.putIfAbsent(id, () => GlobalKey());
+    final flash = _flashId == id;
+    return Container(
+      key: key,
+      margin: const EdgeInsets.only(bottom: 2),
+      decoration: BoxDecoration(
+        color: flash
+            ? Theme.of(context).colorScheme.primary.withOpacity(0.08)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: child,
+    );
+  }
+
   Widget _body(bool wide, Post? op) {
     if (_loading) {
       return Padding(
@@ -306,14 +382,14 @@ class _ThreadPageState extends State<ThreadPage> {
     if (_error != null && op == null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              const Icon(Icons.cloud_off_rounded, color: kInk3, size: 30),
-              const SizedBox(height: 10),
+              Icon(Icons.cloud_off_rounded, color: kInk3, size: 30),
+              SizedBox(height: 10),
               Text(_error!, textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, color: kInk2)),
+                  style: TextStyle(fontSize: 13, color: kInk2)),
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: () => _load(1, reset: true),
@@ -329,40 +405,42 @@ class _ThreadPageState extends State<ThreadPage> {
     final items = <Widget>[
       if (op.displayTitle.isNotEmpty)
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+          padding: EdgeInsets.fromLTRB(4, 4, 4, 12),
           child: Text(op.displayTitle,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 21,
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.4,
                   height: 1.4)),
         ),
-      PostCard(
-        post: op,
-        isOp: true,
-        onThreadTap: (id) => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => ThreadPage(threadId: id)),
+      _floor(
+        op.id,
+        PostCard(
+          post: op,
+          isOp: true,
+          onQuote: _onQuote,
+          onImageTap: (url) => _previewImage(url),
         ),
-        onImageTap: (url) => _previewImage(url),
       ),
-      const SizedBox(height: 6),
-      ..._replies.map((p) => PostCard(
-            post: p,
-            onThreadTap: (id) => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => ThreadPage(threadId: id)),
+      SizedBox(height: 6),
+      ..._replies.map((p) => _floor(
+            p.id,
+            PostCard(
+              post: p,
+              onQuote: _onQuote,
+              onImageTap: (url) => _previewImage(url),
             ),
-            onImageTap: (url) => _previewImage(url),
           )),
       if (_hasMore)
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: EdgeInsets.symmetric(vertical: 14),
           child: OutlinedButton(
             onPressed: _more ? null : () => _load(_page + 1),
             child: Text(_more ? '加载中…' : '加载更多回复（$_page/${(op.replyCount / 20).ceil()}）'),
           ),
         )
       else
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(vertical: 18),
           child: Center(
             child: Text('— 到底了 —',
@@ -371,24 +449,30 @@ class _ThreadPageState extends State<ThreadPage> {
         ),
     ];
 
-    return ListView.builder(
+    // 用一次性构建的 ListView 而不是 builder：懒加载下未构建的楼层没有
+    // GlobalKey，`>>No.` 就没法定位到屏幕外的楼。单串按页加载（20 条/页），
+    // 一级列表规模可控，换来定位可靠。
+    return ListView(
+      controller: _scroll,
       padding: EdgeInsets.fromLTRB(wide ? 32 : 14, 6, wide ? 32 : 14, 20),
-      itemCount: items.length,
-      itemBuilder: (context, i) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 820),
-          child: items[i],
-        ),
-      ),
+      children: <Widget>[
+        for (final item in items)
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 820),
+              child: item,
+            ),
+          ),
+      ],
     );
   }
 
   Widget _replyBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+      padding: EdgeInsets.fromLTRB(16, 10, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: const Border(top: BorderSide(color: kOutline)),
+        color: kCard,
+        border: Border(top: BorderSide(color: kOutline)),
         boxShadow: <BoxShadow>[
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -427,7 +511,7 @@ class _ThreadPageState extends State<ThreadPage> {
         child: InteractiveViewer(
           maxScale: 4,
           child: Center(
-            child: Image.network(
+            child: CachedImage(
               url,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => const Icon(

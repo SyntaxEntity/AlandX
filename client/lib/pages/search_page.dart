@@ -45,12 +45,12 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF3F5FB),
+        backgroundColor: kCanvas,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         titleSpacing: 0,
         title: Padding(
-          padding: const EdgeInsets.only(right: 12),
+          padding: EdgeInsets.only(right: 12),
           child: TextField(
             controller: _ctrl,
             autofocus: true,
@@ -60,16 +60,16 @@ class _SearchPageState extends State<SearchPage> {
               hintText: '搜索串标题或内容',
               isDense: true,
               filled: true,
-              fillColor: Colors.white,
-              prefixIcon: const Icon(Icons.search_rounded, size: 20),
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              fillColor: kCard,
+              prefixIcon: Icon(Icons.search_rounded, size: 20),
+              contentPadding: EdgeInsets.symmetric(vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: kOutline),
+                borderSide: BorderSide(color: kOutline),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: kOutline),
+                borderSide: BorderSide(color: kOutline),
               ),
             ),
           ),
@@ -92,7 +92,7 @@ class _SearchPageState extends State<SearchPage> {
 
     final r = _result;
     if (r == null) {
-      return const Center(
+      return Center(
         child: Padding(
           padding: EdgeInsets.all(28),
           child: Text(
@@ -108,10 +108,10 @@ class _SearchPageState extends State<SearchPage> {
     if (r.hits.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: EdgeInsets.all(28),
           child: Text(r.message,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: kInk2)),
+              style: TextStyle(fontSize: 13, color: kInk2)),
         ),
       );
     }
@@ -123,7 +123,7 @@ class _SearchPageState extends State<SearchPage> {
       itemBuilder: (context, i) {
         final h = r.hits[i];
         return SurfaceCard(
-          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+          padding: EdgeInsets.fromLTRB(14, 12, 10, 12),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
               builder: (_) => ThreadPage(threadId: h.id),
@@ -136,13 +136,13 @@ class _SearchPageState extends State<SearchPage> {
                 height: 38,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F4FF),
+                  color: Color(0xFFF1F4FF),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.chat_bubble_outline_rounded,
+                child: Icon(Icons.chat_bubble_outline_rounded,
                     size: 17, color: Color(0xFF6D82F5)),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,17 +150,17 @@ class _SearchPageState extends State<SearchPage> {
                     Text(h.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             height: 1.4)),
-                    const SizedBox(height: 3),
+                    SizedBox(height: 3),
                     Text('No.${h.id}',
-                        style: const TextStyle(fontSize: 11, color: kInk3)),
+                        style: TextStyle(fontSize: 11, color: kInk3)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
+              Icon(Icons.chevron_right_rounded,
                   size: 18, color: kInk3),
             ],
           ),

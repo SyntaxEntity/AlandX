@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'models.dart';
+import 'theme.dart';
 
-const Color kInk = Color(0xFF14161D);
-const Color kInk2 = Color(0xFF5A6274);
-const Color kInk3 = Color(0xFF8B93A7);
-const Color kOutline = Color(0xFFE5E8F1);
+// 颜色语义已迁到 theme.dart：kInk / kInk2 / kInk3 / kOutline 现在是跟着
+// ColorScheme 走的 getter，明暗模式都能用。
+// 这里 re-export，让原本 `import '../widgets.dart'` 的文件不用逐个改 import。
+export 'image_cache.dart';
+export 'theme.dart'
+    show kInk, kInk2, kInk3, kOutline, kCanvas, kCard, kChip, palette;
 
 /// 由饼干 hash 派生稳定颜色，和网页端「每个人一个色块」的观感对齐。
 Color hashColor(String s, {double shift = 0, double sat = 0.52, double val = 0.66}) {
@@ -61,18 +64,18 @@ class SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 22, 4, 10),
+      padding: EdgeInsets.fromLTRB(4, 22, 4, 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: <Widget>[
           Text(title,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 14.5, fontWeight: FontWeight.w600, color: kInk)),
-          const Spacer(),
+          Spacer(),
           if (trailing != null)
             Text(trailing!,
-                style: const TextStyle(fontSize: 11.5, color: kInk3)),
+                style: TextStyle(fontSize: 11.5, color: kInk3)),
         ],
       ),
     );
@@ -94,28 +97,17 @@ class SurfaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(20);
     final content = Padding(padding: padding, child: child);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: kOutline),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x0E16203C),
-            blurRadius: 24,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
+    // MD3 靠 surfaceContainer 色阶表达层级，不再用「白底 + 1px 描边 + 投影」，
+    // 那套是网页卡片的语言，也是之前「看起来像网页」的主要原因之一。
+    return Material(
+      color: kCard,
+      borderRadius: radius,
+      clipBehavior: onTap == null ? Clip.none : Clip.antiAlias,
       child: onTap == null
           ? content
-          : Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(24),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(onTap: onTap, child: content),
-            ),
+          : InkWell(onTap: onTap, borderRadius: radius, child: content),
     );
   }
 }
@@ -141,7 +133,7 @@ class ThreadCard extends StatelessWidget {
 
     return SurfaceCard(
       onTap: onTap,
-      padding: const EdgeInsets.fromLTRB(16, 15, 14, 15),
+      padding: EdgeInsets.fromLTRB(16, 15, 14, 15),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -149,13 +141,13 @@ class ThreadCard extends StatelessWidget {
             children: <Widget>[
               XAvatar(hash: post.userHash),
               if (forum != null) ...<Widget>[
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(forum!,
-                    style: const TextStyle(fontSize: 9.5, color: kInk3)),
+                    style: TextStyle(fontSize: 9.5, color: kInk3)),
               ],
             ],
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,22 +155,22 @@ class ThreadCard extends StatelessWidget {
                 Row(
                   children: <Widget>[
                     Text(post.displayName,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
                             color: kInk)),
                     if (post.admin) ...<Widget>[
-                      const SizedBox(width: 6),
-                      _Badge('ADMIN', bg: const Color(0xFFFFF0E8), fg: const Color(0xFFC25A12)),
+                      SizedBox(width: 6),
+                      _Badge('ADMIN', bg: Color(0xFFFFF0E8), fg: Color(0xFFC25A12)),
                     ],
-                    const SizedBox(width: 6),
-                    const Text('·', style: TextStyle(color: kInk3, fontSize: 11)),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
+                    Text('·', style: TextStyle(color: kInk3, fontSize: 11)),
+                    SizedBox(width: 6),
                     Text('No.${post.id}',
-                        style: const TextStyle(fontSize: 11, color: kInk3)),
+                        style: TextStyle(fontSize: 11, color: kInk3)),
                   ],
                 ),
-                const SizedBox(height: 7),
+                SizedBox(height: 7),
                 Text(
                   title.isEmpty ? text : title,
                   maxLines: title.isEmpty ? 1 : 2,
@@ -188,40 +180,40 @@ class ThreadCard extends StatelessWidget {
                     height: 1.45,
                     letterSpacing: -0.2,
                     fontWeight: title.isEmpty ? FontWeight.w400 : FontWeight.w600,
-                    color: title.isEmpty ? const Color(0xFF4A5162) : kInk,
+                    color: title.isEmpty ? Color(0xFF4A5162) : kInk,
                   ),
                 ),
                 if (title.isNotEmpty && text.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 5),
+                  SizedBox(height: 5),
                   Text(
                     text,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13, height: 1.65, color: kInk2),
                   ),
                 ],
-                const SizedBox(height: 9),
+                SizedBox(height: 9),
                 Row(
                   children: <Widget>[
                     Icon(Icons.mode_comment_outlined,
                         size: 14, color: scheme.primary.withOpacity(0.75)),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text('${post.replyCount}',
-                        style: const TextStyle(fontSize: 11.5, color: kInk3)),
-                    const SizedBox(width: 12),
+                        style: TextStyle(fontSize: 11.5, color: kInk3)),
+                    SizedBox(width: 12),
                     Text(prettyTime(post.now),
-                        style: const TextStyle(fontSize: 11.5, color: kInk3)),
+                        style: TextStyle(fontSize: 11.5, color: kInk3)),
                   ],
                 ),
               ],
             ),
           ),
           if (hasImg) ...<Widget>[
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.network(
+              child: CachedImage(
                 Api.instance.imageUrl(post),
                 width: 76,
                 height: 76,
@@ -229,8 +221,8 @@ class ThreadCard extends StatelessWidget {
                 errorBuilder: (_, __, ___) => Container(
                   width: 76,
                   height: 76,
-                  color: const Color(0xFFEEF1F8),
-                  child: const Icon(Icons.image_not_supported_outlined,
+                  color: kChip,
+                  child: Icon(Icons.image_not_supported_outlined,
                       size: 18, color: kInk3),
                 ),
               ),
@@ -290,10 +282,10 @@ class PostCard extends StatelessWidget {
       margin: EdgeInsets.only(bottom: isOp ? 12 : 10),
       padding: EdgeInsets.fromLTRB(isOp ? 18 : 16, 15, isOp ? 18 : 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: kCard,
         borderRadius: BorderRadius.circular(isOp ? 24 : 20),
         border: Border.all(color: kOutline),
-        boxShadow: const <BoxShadow>[
+        boxShadow: <BoxShadow>[
           BoxShadow(
               color: Color(0x0A16203C), blurRadius: 18, offset: Offset(0, 5)),
         ],
@@ -304,7 +296,7 @@ class PostCard extends StatelessWidget {
           Row(
             children: <Widget>[
               XAvatar(hash: post.userHash, size: 32),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,47 +304,47 @@ class PostCard extends StatelessWidget {
                     Row(
                       children: <Widget>[
                         Text(post.displayName,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
                                 color: kInk)),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         if (post.isTips)
                           _Badge('TIPS',
-                              bg: const Color(0xFFFFF0E8),
-                              fg: const Color(0xFFC25A12))
+                              bg: Color(0xFFFFF0E8),
+                              fg: Color(0xFFC25A12))
                         else if (isOp)
                           _Badge('PO',
                               bg: scheme.primary.withOpacity(0.10),
                               fg: scheme.primary)
                         else if (post.admin)
                           _Badge('ADMIN',
-                              bg: const Color(0xFFFFF0E8),
-                              fg: const Color(0xFFC25A12)),
+                              bg: Color(0xFFFFF0E8),
+                              fg: Color(0xFFC25A12)),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text('No.${post.id}  ·  ${prettyTime(post.now)}',
-                        style: const TextStyle(fontSize: 11, color: kInk3)),
+                        style: TextStyle(fontSize: 11, color: kInk3)),
                   ],
                 ),
               ),
             ],
           ),
           if (imgUrl.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             GestureDetector(
               onTap: () => onImageTap?.call(imgUrl),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.network(
+                child: CachedImage(
                   imgUrl,
                   fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) => Container(
                     height: 120,
                     alignment: Alignment.center,
-                    color: const Color(0xFFF3F5FB),
-                    child: const Icon(Icons.broken_image_outlined, color: kInk3),
+                    color: kCanvas,
+                    child: Icon(Icons.broken_image_outlined, color: kInk3),
                   ),
                 ),
               ),
@@ -413,7 +405,7 @@ class RichContent extends StatelessWidget {
             onTap: () => onImageTap?.call(_absolute(src)),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: Image.network(
+              child: CachedImage(
                 _absolute(src),
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const SizedBox.shrink(),
@@ -488,7 +480,7 @@ class RichContent extends StatelessWidget {
             alignment: PlaceholderAlignment.middle,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 1),
-              child: Image.network(
+              child: CachedImage(
                 _absolute(src),
                 height: emoji ? 22 : 90,
                 errorBuilder: (_, __, ___) => const SizedBox.shrink(),
@@ -716,10 +708,10 @@ class _SkeletonState extends State<Skeleton>
           opacity: Tween<double>(begin: 0.45, end: 0.9).animate(_c),
           child: Container(
             height: widget.height,
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
+            margin: EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: kCard,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: kOutline),
             ),
@@ -727,15 +719,15 @@ class _SkeletonState extends State<Skeleton>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Container(
-                    width: 120, height: 10, color: const Color(0xFFEEF1F8)),
+                    width: 120, height: 10, color: kChip),
                 const SizedBox(height: 12),
                 Container(
                     width: double.infinity,
                     height: 12,
-                    color: const Color(0xFFF2F4FA)),
+                    color: kChip),
                 const SizedBox(height: 8),
                 Container(
-                    width: 200, height: 12, color: const Color(0xFFF2F4FA)),
+                    width: 200, height: 12, color: kChip),
               ],
             ),
           ),

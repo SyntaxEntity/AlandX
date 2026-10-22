@@ -35,18 +35,18 @@ class _SettingsPageState extends State<SettingsPage> {
           children: <Widget>[
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 980),
+                constraints: BoxConstraints(maxWidth: 980),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Text('设置',
+                    Text('设置',
                         style: TextStyle(
                             fontSize: 25,
                             fontWeight: FontWeight.w600,
                             letterSpacing: -0.5,
                             color: kInk)),
-                    const SizedBox(height: 5),
-                    const Text('接口、外观与缓存',
+                    SizedBox(height: 5),
+                    Text('接口、外观与缓存',
                         style: TextStyle(fontSize: 12.5, color: kInk2)),
                     const SizedBox(height: 18),
                     _apiCard(),
@@ -71,7 +71,7 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Row(
+          Row(
             children: <Widget>[
               Expanded(
                 child: Text('接口',
@@ -82,10 +82,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   style: TextStyle(fontSize: 11, color: kInk3)),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Row(
             children: <Widget>[
-              const SizedBox(
+              SizedBox(
                 width: 88,
                 child: Text('API 基址',
                     style: TextStyle(fontSize: 12.5, color: kInk2)),
@@ -93,16 +93,16 @@ class _SettingsPageState extends State<SettingsPage> {
               Expanded(
                 child: SelectableText(
                   Api.apiBase,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12, fontFamily: 'monospace', color: kInk),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             children: <Widget>[
-              const SizedBox(
+              SizedBox(
                 width: 88,
                 child: Text('主站',
                     style: TextStyle(fontSize: 12.5, color: kInk2)),
@@ -110,14 +110,14 @@ class _SettingsPageState extends State<SettingsPage> {
               Expanded(
                 child: SelectableText(
                   Api.webBase,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12, fontFamily: 'monospace', color: kInk),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Text(
+          SizedBox(height: 12),
+          Text(
             '主站域名会漂移（nmbxd.com 已 301 到 www.nmbxd1.com）。'
             '若某天接口整体失效，优先检查这里，再改 lib/api.dart 的 apiBase。',
             style: TextStyle(fontSize: 12, height: 1.7, color: kInk2),
@@ -132,7 +132,7 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Row(
+          Row(
             children: <Widget>[
               Expanded(
                 child: Text('主题',
@@ -143,8 +143,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   style: TextStyle(fontSize: 11, color: kInk3)),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: 8),
+          Text(
             '一个种子色生成整套配色，和 FlClash 的做法一致。',
             style: TextStyle(fontSize: 12.5, height: 1.7, color: kInk2),
           ),
@@ -192,7 +192,7 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Row(
+          Row(
             children: <Widget>[
               Expanded(
                 child: Text('缓存',
@@ -203,29 +203,29 @@ class _SettingsPageState extends State<SettingsPage> {
                   style: TextStyle(fontSize: 11, color: kInk3)),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Row(
             children: <Widget>[
-              const SizedBox(
+              SizedBox(
                 width: 88,
                 child: Text('最近耗时',
                     style: TextStyle(fontSize: 12.5, color: kInk2)),
               ),
               Text(
                 _state.upstreamMs == 0 ? '—' : '${_state.upstreamMs} ms',
-                style: const TextStyle(fontSize: 12.5, color: kInk),
+                style: TextStyle(fontSize: 12.5, color: kInk),
               ),
             ],
           ),
           Row(
             children: <Widget>[
-              const SizedBox(
+              SizedBox(
                 width: 88,
                 child: Text('缓存条目',
                     style: TextStyle(fontSize: 12.5, color: kInk2)),
               ),
               Text('${CacheStore.instance.count} 条',
-                  style: const TextStyle(fontSize: 12.5, color: kInk)),
+                  style: TextStyle(fontSize: 12.5, color: kInk)),
             ],
           ),
           const SizedBox(height: 12),
@@ -236,10 +236,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SnackBar(content: Text('缓存已清空')),
               );
             },
-            child: const Text('清空接口缓存'),
+            child: Text('清空接口缓存'),
           ),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: 8),
+          Text(
             '列表缓存 90 秒、串 10 分钟、版面 12 小时；网络失败时会用过期缓存兜底，并在列表上方标注。',
             style: TextStyle(fontSize: 12, height: 1.7, color: kInk2),
           ),
@@ -252,7 +252,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return SurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const <Widget>[
+        children: <Widget>[
           Text('关于',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           SizedBox(height: 10),

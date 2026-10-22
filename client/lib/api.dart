@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'cache.dart';
@@ -287,11 +288,14 @@ class Api {
       return PostResult(false, '发送失败：$e');
     }
 
-    return _parseJump(utf8.decode(res.bodyBytes));
+    return parseJumpHtml(utf8.decode(res.bodyBytes));
   }
 
   /// 发串接口返回「跳转提示」HTML，没有结构化错误码，只能靠文案判断。
-  PostResult _parseJump(String html) {
+  ///
+  /// 这段逻辑是「猜」，最容易随站点改文案而失效，所以对外开放以便单测。
+  @visibleForTesting
+  PostResult parseJumpHtml(String html) {
     final text = _stripHtml(html);
 
     for (final ok in const <String>['发串成功', '回复成功', '发送成功']) {
@@ -358,7 +362,7 @@ class Api {
         },
       ).timeout(const Duration(seconds: 30));
 
-      return _parseSearch(utf8.decode(res.bodyBytes));
+      return parseSearchHtml(utf8.decode(res.bodyBytes));
     } on TimeoutException {
       return const SearchResult(<SearchHit>[], '搜索超时');
     } catch (e) {
@@ -374,7 +378,8 @@ class Api {
     return m == null ? null : 'PHPSESSID=${m.group(1)}';
   }
 
-  SearchResult _parseSearch(String html) {
+  @visibleForTesting
+  SearchResult parseSearchHtml(String html) {
     final hits = <int, SearchHit>{};
     final re = RegExp(
       r'''<a[^>]+href=["']([^"']*?/t/(\d+))["'][^>]*>(.*?)</a>''',

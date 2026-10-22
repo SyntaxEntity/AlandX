@@ -32,7 +32,11 @@ jobs:
           flutter create --org dev.xd --platforms=android,linux .
           rm -f test/widget_test.dart
       - run: flutter pub get
-      - run: flutter analyze
+      - name: analyze
+        # info 级别（风格建议）不阻塞，error / warning 仍然会让流水线失败
+        run: flutter analyze --no-fatal-infos
+      - name: test
+        run: flutter test
 
   android-arm64:
     name: android arm64-v8a

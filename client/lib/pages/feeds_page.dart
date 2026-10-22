@@ -8,6 +8,7 @@ import '../cookies.dart';
 import '../models.dart';
 import '../state.dart';
 import '../widgets.dart';
+import 'cookie_help.dart';
 import 'thread_page.dart';
 
 class FeedsPage extends StatefulWidget {
@@ -84,12 +85,12 @@ class _FeedsPageState extends State<FeedsPage> {
     final text = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('导入饼干'),
+        title: Text('导入饼干'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text(
+            Text(
               '在用户中心领取饼干后，二维码内容是 {"cookie":"…","name":"…"}，'
               '整段粘贴或只贴 cookie 值都可以。只保存在本机。',
               style: TextStyle(fontSize: 12.5, height: 1.6, color: kInk2),
@@ -108,6 +109,13 @@ class _FeedsPageState extends State<FeedsPage> {
           ],
         ),
         actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).push(CookieHelpPage.route());
+            },
+            child: const Text('怎么获取'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('取消'),
@@ -142,18 +150,18 @@ class _FeedsPageState extends State<FeedsPage> {
           children: <Widget>[
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 980),
+                constraints: BoxConstraints(maxWidth: 980),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Text('订阅',
+                    Text('订阅',
                         style: TextStyle(
                             fontSize: 25,
                             fontWeight: FontWeight.w600,
                             letterSpacing: -0.5,
                             color: kInk)),
-                    const SizedBox(height: 5),
-                    const Text('饼干是身份，订阅是收藏，两者互不绑定',
+                    SizedBox(height: 5),
+                    Text('饼干是身份，订阅是收藏，两者互不绑定',
                         style: TextStyle(fontSize: 12.5, color: kInk2)),
                     const SizedBox(height: 18),
                     _biscuitCard(),
@@ -179,17 +187,17 @@ class _FeedsPageState extends State<FeedsPage> {
         children: <Widget>[
           Row(
             children: <Widget>[
-              const Expanded(
+              Expanded(
                 child: Text('饼干（身份）',
                     style: TextStyle(
                         fontSize: 15, fontWeight: FontWeight.w600)),
               ),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: active == null
-                      ? const Color(0xFFFFF3E6)
+                      ? Color(0xFFFFF3E6)
                       : Theme.of(context).colorScheme.primary.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(999),
                 ),
@@ -201,35 +209,35 @@ class _FeedsPageState extends State<FeedsPage> {
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: active == null
-                        ? const Color(0xFFB96A12)
+                        ? Color(0xFFB96A12)
                         : Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: 8),
+          Text(
             '一块饼干就是一个可发帖身份。第三方客户端无法代你登录，'
             '只能由你从用户中心复制/扫码导入；饼干只存在本机。',
             style: TextStyle(fontSize: 12.5, height: 1.7, color: kInk2),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           if (_cookies.items.isEmpty)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FF),
+                color: kChip,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFD3D9EA)),
+                border: Border.all(color: Color(0xFFD3D9EA)),
               ),
               child: Row(
                 children: <Widget>[
-                  const Icon(Icons.cookie_outlined,
+                  Icon(Icons.cookie_outlined,
                       color: Color(0xFF3D5BFE), size: 30),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  SizedBox(width: 12),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
@@ -272,36 +280,36 @@ class _FeedsPageState extends State<FeedsPage> {
     final isActive = _cookies.active?.id == b.id;
     final verified = _cookies.verified[b.id];
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.fromLTRB(14, 12, 8, 12),
       decoration: BoxDecoration(
-        color: isActive ? const Color(0xFFF5F7FF) : const Color(0xFFF8F9FF),
+        color: isActive ? Color(0xFFF5F7FF) : kChip,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: isActive ? const Color(0xFFC3CCFF) : kOutline),
+            color: isActive ? Color(0xFFC3CCFF) : kOutline),
       ),
       child: Row(
         children: <Widget>[
           Icon(Icons.cookie_outlined,
               size: 20, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(b.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w600)),
                 Text(
                   '${b.masked} · ${verified == true ? "已校验" : verified == false ? "校验未通过" : "未校验"}',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 11, color: kInk3, fontFamily: 'monospace'),
                 ),
               ],
             ),
           ),
           if (isActive)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 6),
               child: Text('使用中',
                   style: TextStyle(fontSize: 11, color: kInk3)),
@@ -353,7 +361,7 @@ class _FeedsPageState extends State<FeedsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Row(
+          Row(
             children: <Widget>[
               Expanded(
                 child: Text('本地订阅',
@@ -364,15 +372,15 @@ class _FeedsPageState extends State<FeedsPage> {
                   style: TextStyle(fontSize: 11, color: kInk3)),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: 8),
+          Text(
             '订阅接口只认 UUID，不校验账号。换设备时导入同一个 UUID 就能同步收藏。',
             style: TextStyle(fontSize: 12.5, height: 1.7, color: kInk2),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           SelectableText(
             _state.uuid,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 11.5, color: kInk3, fontFamily: 'monospace'),
           ),
           const SizedBox(height: 12),
@@ -404,7 +412,7 @@ class _FeedsPageState extends State<FeedsPage> {
         child: Column(
           children: <Widget>[
             Text(_error!,
-                style: const TextStyle(fontSize: 12.5, color: kInk2)),
+                style: TextStyle(fontSize: 12.5, color: kInk2)),
             const SizedBox(height: 10),
             OutlinedButton(onPressed: _loadFeed, child: const Text('重试')),
           ],
@@ -412,7 +420,7 @@ class _FeedsPageState extends State<FeedsPage> {
       );
     }
     if (_feed.isEmpty) {
-      return const SurfaceCard(
+      return SurfaceCard(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 16),
           child: Center(
@@ -444,7 +452,7 @@ class _FeedsPageState extends State<FeedsPage> {
                 _toast(txt.isEmpty ? '已取消订阅' : txt);
                 _loadFeed();
               },
-              child: const Text('取消订阅',
+              child: Text('取消订阅',
                   style: TextStyle(fontSize: 12, color: kInk3)),
             ),
           ],
@@ -456,16 +464,16 @@ class _FeedsPageState extends State<FeedsPage> {
   void _showHelp() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
+      backgroundColor: kCanvas,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
+        padding: EdgeInsets.fromLTRB(22, 18, 22, 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const <Widget>[
+          children: <Widget>[
             Text('饼干怎么拿？',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
             SizedBox(height: 12),

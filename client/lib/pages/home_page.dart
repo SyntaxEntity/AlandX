@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models.dart';
 import '../state.dart';
 import '../widgets.dart';
+import 'cookie_help.dart';
 import 'search_page.dart';
 import 'thread_page.dart';
 
@@ -48,6 +49,11 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           _header(context),
+                          if (state.cookie == null &&
+                              !state.anonHintDismissed) ...<Widget>[
+                            const SizedBox(height: 12),
+                            _anonHint(context),
+                          ],
                           const SizedBox(height: 18),
                           _HeroCard(
                             title: state.source.name,
@@ -98,6 +104,46 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// 未登录时的一条轻提示：不弹窗、不挡内容，可关掉且记住选择。
+  Widget _anonHint(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withOpacity(0.55),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.person_outline_rounded,
+              size: 17, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              '当前是匿名浏览，受限版面看不到，也不能发串',
+              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+            ),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, 34),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+            onPressed: () => Navigator.of(context).push(CookieHelpPage.route()),
+            child: const Text('怎么弄', style: TextStyle(fontSize: 12.5)),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            tooltip: '关闭',
+            iconSize: 16,
+            onPressed: () => state.dismissAnonHint(),
+            icon: Icon(Icons.close_rounded, color: kInk3),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _header(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,16 +152,16 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text('时间线',
+              Text('时间线',
                   style: TextStyle(
                       fontSize: 25,
                       fontWeight: FontWeight.w600,
                       letterSpacing: -0.5,
                       color: kInk)),
-              const SizedBox(height: 5),
+              SizedBox(height: 5),
               Text(
                 '来源 ${state.source.isForum ? '/showf' : '/timeline'} · 20 条一页',
-                style: const TextStyle(fontSize: 12.5, color: kInk2),
+                style: TextStyle(fontSize: 12.5, color: kInk2),
               ),
             ],
           ),
@@ -209,14 +255,14 @@ class _HomePageState extends State<HomePage> {
   Widget _errorOrEmpty(BuildContext context) {
     if (state.error != null) {
       return SurfaceCard(
-        padding: const EdgeInsets.all(22),
+        padding: EdgeInsets.all(22),
         child: Column(
           children: <Widget>[
-            const Icon(Icons.cloud_off_rounded, color: kInk3, size: 30),
-            const SizedBox(height: 10),
+            Icon(Icons.cloud_off_rounded, color: kInk3, size: 30),
+            SizedBox(height: 10),
             Text(state.error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: kInk2)),
+                style: TextStyle(fontSize: 13, color: kInk2)),
             const SizedBox(height: 14),
             FilledButton.tonal(
               onPressed: _refresh,
@@ -226,7 +272,7 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     }
-    return const SurfaceCard(
+    return SurfaceCard(
       padding: EdgeInsets.all(30),
       child: Center(
         child: Text('这里还没有内容',
@@ -244,14 +290,14 @@ class _HomePageState extends State<HomePage> {
       return Column(
         children: <Widget>[
           Text(state.error!,
-              style: const TextStyle(fontSize: 12, color: kInk3)),
+              style: TextStyle(fontSize: 12, color: kInk3)),
           const SizedBox(height: 10),
           OutlinedButton(onPressed: _refresh, child: const Text('重试')),
         ],
       );
     }
     if (!state.hasMore) {
-      return const Center(
+      return Center(
         child: Text('— 到底了 —',
             style: TextStyle(fontSize: 12, color: kInk3)),
       );
@@ -440,7 +486,7 @@ class _Pill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 15),
+          padding: EdgeInsets.symmetric(horizontal: 15),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
@@ -456,13 +502,13 @@ class _Pill extends StatelessWidget {
                       fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                       color: active ? Colors.white : kInk2)),
               if (locked) ...<Widget>[
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Icon(Icons.lock_outline_rounded,
                     size: 12,
                     color: active ? Colors.white70 : kInk3),
               ],
               if (trailing != null) ...<Widget>[
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Icon(trailing,
                     size: 14, color: active ? Colors.white : kInk3),
               ],
@@ -484,7 +530,7 @@ class _IconBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: Colors.white,
+      color: kCard,
       borderRadius: BorderRadius.circular(15),
       child: InkWell(
         borderRadius: BorderRadius.circular(15),

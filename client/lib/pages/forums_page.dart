@@ -39,7 +39,7 @@ class _ForumsPageState extends State<ForumsPage> {
             SliverToBoxAdapter(
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 980),
+                  constraints: BoxConstraints(maxWidth: 980),
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(wide ? 32 : 16, 26, wide ? 32 : 16, 0),
                     child: Column(
@@ -51,18 +51,18 @@ class _ForumsPageState extends State<ForumsPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
-                                  const Text('版面',
+                                  Text('版面',
                                       style: TextStyle(
                                           fontSize: 25,
                                           fontWeight: FontWeight.w600,
                                           letterSpacing: -0.5,
                                           color: kInk)),
-                                  const SizedBox(height: 5),
+                                  SizedBox(height: 5),
                                   Text(
                                     state.categories.isEmpty
                                         ? '正在获取 /getForumList…'
                                         : '${state.categories.length} 个分类 · $total 个版面',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 12.5, color: kInk2),
                                   ),
                                 ],
@@ -157,7 +157,7 @@ class _ForumsPageState extends State<ForumsPage> {
         borderRadius: BorderRadius.circular(999),
         onTap: () => setState(() => selected = id),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 15),
+          padding: EdgeInsets.symmetric(horizontal: 15),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
@@ -194,7 +194,7 @@ class _ForumTile extends StatelessWidget {
 
     return SurfaceCard(
       onTap: onTap,
-      padding: const EdgeInsets.fromLTRB(16, 15, 16, 14),
+      padding: EdgeInsets.fromLTRB(16, 15, 16, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -204,7 +204,7 @@ class _ForumTile extends StatelessWidget {
                 child: Text(forum.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 15.5,
                         fontWeight: FontWeight.w600,
                         color: kInk)),
@@ -212,7 +212,7 @@ class _ForumTile extends StatelessWidget {
               if (forum.threadCount > 0)
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
                     color: scheme.primary.withOpacity(0.09),
                     borderRadius: BorderRadius.circular(999),
@@ -225,16 +225,16 @@ class _ForumTile extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 5),
+          SizedBox(height: 5),
           Text('$category · 间隔 ${forum.interval}s',
-              style: const TextStyle(fontSize: 11.5, color: kInk3)),
+              style: TextStyle(fontSize: 11.5, color: kInk3)),
           const Spacer(),
           ClipRRect(
             borderRadius: BorderRadius.circular(99),
             child: LinearProgressIndicator(
               value: ratio,
               minHeight: 4,
-              backgroundColor: const Color(0xFFEEF1F8),
+              backgroundColor: kChip,
               valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
             ),
           ),
@@ -253,7 +253,7 @@ class _RefreshBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: Colors.white,
+      color: kCard,
       borderRadius: BorderRadius.circular(15),
       child: InkWell(
         borderRadius: BorderRadius.circular(15),

@@ -24,7 +24,9 @@ client/linux/
 client/macos/
 client/windows/
 client/web/
-client/test/
+
+# 但 test/ 里是我们自己的测试，要保留；只忽略 flutter create 生成的模板
+client/test/widget_test.dart
 
 # 临时文件
 *.zip

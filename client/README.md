@@ -8,13 +8,13 @@ X岛匿名揭示板的第三方客户端，视觉语言参考 FlClash：Material
 
 | 模块 | 状态 |
 |---|---|
-| 时间线 / 版面 / 串详情 | 已实现（20 条/页、引用跳转、只看 PO、图片查看） |
+| 时间线 / 版面 / 串详情 | 已实现（20 条/页、只看 PO、图片查看、`>>No.` 楼层定位） |
 | 饼干管理 | 已实现（导入 / 切换 / 删除 / 校验，仅存本机） |
 | 发串 / 回复 | 已实现（纯文本 + 图片，图片压到 1600px / 88%，上限 4MB） |
 | 搜索 | 已实现（网页表单 + `__hash__`，解析 HTML；未登录可能拿不到结果） |
 | 缓存 | 已实现（持久化 JSON：列表 90s、串 10min、版面 12h；5xx 时用旧缓存兜底并提示） |
 | 订阅 | 已实现（UUID 机制，与服务端账号无关） |
-| 外观 | 已实现（6 个种子色、深浅色跟随系统） |
+| 外观 | 已实现（MD3：6 个种子色、Material 3 组件主题、深浅色跟随系统） |
 | 平台 | Android / iOS / Desktop；**不支持 Web**（接口无 CORS） |
 
 ✅ **已在 CI 上真实构建通过**（2026-10-22，run `39744311614`，Flutter 3.24.5 / ubuntu-latest）：
@@ -83,11 +83,14 @@ Flutter 官方 Linux 归档**只有 x64**（`flutter_linux_<version>-stable.tar.
 
 ```
 lib/
-├── main.dart              应用外壳、主题、侧栏/底栏导航
+├── main.dart              应用外壳、明暗主题、侧栏/底栏导航
+├── theme.dart             MD3 主题：ColorScheme、组件主题、语义色板
 ├── models.dart            Post / Forum / TimelineLine / Source
 ├── api.dart               接口封装：读、发串、回复、订阅、搜索、饼干校验
 ├── cache.dart             持久化 JSON 缓存（SharedPreferences）
 ├── cookies.dart           饼干仓库（SharedPreferences）
+├── draft.dart             发串草稿
+├── image_cache.dart       图片磁盘缓存（内存 → 磁盘 → 网络）
 ├── picker.dart            选图与压缩
 ├── state.dart             全局状态：主题、当前来源、时间线分页
 ├── widgets.dart           卡片、头像、正文 HTML 渲染、骨架屏
@@ -96,11 +99,18 @@ lib/
 └── pages/
     ├── home_page.dart     时间线（Hero + 圆环刷新 + 列表）
     ├── forums_page.dart   版面（分类 + 网格）
-    ├── thread_page.dart   串详情（PO / 引用 / 回复 / 图片）
-    ├── compose_page.dart  发新串（含图片）
+    ├── thread_page.dart   串详情（PO / 引用 / 回复 / 图片 / 楼层定位）
+    ├── compose_page.dart  发新串（含图片、草稿）
     ├── search_page.dart   搜索（网页表单解析）
     ├── feeds_page.dart    订阅 + 饼干管理
+    ├── cookie_help.dart   如何获取饼干（图文教程）
     └── settings_page.dart 接口、主题、缓存、关于
+test/
+└── api_parse_test.dart    解析类纯函数单测
+scripts/
+├── bootstrap.sh           补平台目录 + pub get
+├── gen-keystore.sh        生成 release 签名密钥库
+└── apply_signing.py       把签名配置注入 flutter create 生成的 build.gradle
 ```
 
 ## 几个必须知道的实现细节
@@ -112,11 +122,36 @@ lib/
 5. **饼干 = 身份**。Cookie 键名固定 `userhash`；缺失时受限版面返回 `{"success":false,"error":"必须登入领取饼干后才可以访问"}`。饼干存在 SharedPreferences 明文里，介意的话换成 `flutter_secure_storage`。
 6. **域名会漂**。主站已从 `nmbxd.com` 迁到 `www.nmbxd1.com`；接口在 `api.nmb.best`。改地址只需要动 `lib/api.dart` 顶部三个常量。
 
+## Release 签名
+
+默认流水线用的是 Flutter 的 debug keystore，包能装、能跑，但不能上架，
+而且**以后换成正式签名就无法覆盖安装**（签名不同）。要出可长期迭代的包：
+
+```bash
+cd client
+bash scripts/gen-keystore.sh      # 生成密钥库并打印 4 个 secrets
+```
+
+把输出的 4 个值填进 GitHub 仓库 Settings → Secrets and variables → Actions：
+
+| Secret | 内容 |
+|---|---|
+| `KEYSTORE_BASE64` | 脚本输出的那一整行 base64 |
+| `KEYSTORE_PASSWORD` | 密钥库口令 |
+| `KEY_ALIAS` | 默认 `upload` |
+| `KEY_PASSWORD` | 与密钥库口令相同 |
+
+配好之后打 tag，流水线会自动解码密钥库、写 `key.properties`、
+并用 `scripts/apply_signing.py` 把签名配置注入 `build.gradle`。
+没配这 4 个 secret 时该步骤会被跳过，仍出调试签名包。
+
+> ⚠️ 密钥库丢了就再也无法发布同签名的更新，务必单独备份。
+
 ## 未做
 
-- 推送（接口没有，只能前台轮询 `/feed?uuid=`）
-- 图片缓存（只缓存 JSON；图片走 Flutter 默认内存缓存，重进页面会重新下载）
-- 楼层定位（点 `>>No.` 打开的是串，不会滚到对应楼层）
+- 推送 / 订阅轮询（接口没有推送能力，只能前台轮询 `/feed?uuid=`）
+- 跨串引用跳转（`>>No.` 只在本串内定位，引用别的串时只提示不跳转）
+- 请求重试与指数退避（一次失败即报错）
 
 ## 许可
 

@@ -14,6 +14,9 @@ jobs:
   android:
     name: android arm64-v8a
     runs-on: ubuntu-latest
+    # 配置了签名密钥才会用正式签名，否则仍然出调试签名包（能装，但不可长期迭代）
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
     defaults:
       run:
         working-directory: client
@@ -32,6 +35,17 @@ jobs:
         run: |
           flutter create --org dev.xd --platforms=android .
           rm -f test/widget_test.dart
+      - name: configure release signing
+        if: env.KEYSTORE_BASE64 != ''
+        env:
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=upload-keystore.jks\n' \
+            "$KS_PASS" "$KEY_PASS" "$ALIAS" > android/key.properties
+          python3 scripts/apply_signing.py
       - run: flutter pub get
       - name: build apk
         run: flutter build apk --release --target-platform android-arm64 --split-per-abi

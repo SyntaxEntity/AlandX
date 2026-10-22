@@ -1,7 +1,23 @@
-# 只保留编译器级诊断（错误/警告），不启用风格类 lint。
-# 原因：CI 的 `flutter analyze` 会把 info 级别的 lint 也当失败，
-# 而本项目更在意「能不能编译」，不是「const 用得够不够多」。
+# 启用 flutter_lints 标准规则集。
+#
+# CI 里跑的是 `flutter analyze --no-fatal-infos`：
+# error / warning 会让流水线失败，info 级别的风格建议不阻塞。
+# 这样既能持续收到 lint 提示，又不会因为「少写一个 const」把构建打红。
+include: package:flutter_lints/flutter.yaml
+
 analyzer:
   exclude:
     - build/**
     - .dart_tool/**
+  errors:
+    unused_element: warning
+    unused_field: warning
+
+linter:
+  rules:
+    # 本轮刚从「颜色常量」切成「主题 getter」，大量 const 被移除，
+    # 这两条会刷出上百条 info，等颜色体系稳定后再打开。
+    prefer_const_constructors: false
+    prefer_const_literals_to_create_immutables: false
+    # 异步回调里用 context 是既有写法，逐处补 mounted 判断留作后续清理。
+    use_build_context_synchronously: false

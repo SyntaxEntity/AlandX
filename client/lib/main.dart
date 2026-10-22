@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import 'state.dart';
+import 'theme.dart';
 import 'widgets/navigation_dock.dart';
 import 'pages/compose_page.dart';
 import 'pages/home_page.dart';
@@ -13,49 +14,6 @@ import 'pages/settings_page.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const XdApp());
-}
-
-ThemeData buildTheme(Color seed) {
-  final ColorScheme scheme = ColorScheme.fromSeed(
-    seedColor: seed,
-    brightness: Brightness.light,
-  ).copyWith(surface: Colors.white);
-
-  final base = ThemeData(useMaterial3: true, colorScheme: scheme);
-  return base.copyWith(
-    scaffoldBackgroundColor: const Color(0xFFF3F5FB),
-    visualDensity: VisualDensity.standard,
-    textTheme: base.textTheme.copyWith(
-      headlineSmall: base.textTheme.headlineSmall?.copyWith(
-        fontWeight: FontWeight.w600,
-        letterSpacing: -0.4,
-      ),
-      titleMedium: base.textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-        letterSpacing: -0.2,
-      ),
-      titleSmall: base.textTheme.titleSmall?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-    snackBarTheme: SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: const Color(0xFF181C28),
-      contentTextStyle: const TextStyle(fontSize: 13, color: Colors.white),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      insetPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-    ),
-    pageTransitionsTheme: const PageTransitionsTheme(
-      builders: <TargetPlatform, PageTransitionsBuilder>{
-        // 各平台走各自的系统转场，避免「一眼像网页」。
-        TargetPlatform.android: ZoomPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.linux: ZoomPageTransitionsBuilder(),
-        TargetPlatform.windows: ZoomPageTransitionsBuilder(),
-      },
-    ),
-  );
 }
 
 class XdApp extends StatefulWidget {
@@ -81,7 +39,15 @@ class _XdAppState extends State<XdApp> {
       builder: (context, _) => MaterialApp(
         title: 'X岛',
         debugShowCheckedModeBanner: false,
-        theme: buildTheme(state.seed),
+        theme: buildAppTheme(state.seed, Brightness.light),
+        darkTheme: buildAppTheme(state.seed, Brightness.dark),
+        themeMode: ThemeMode.system,
+        // MaterialApp.builder 在主题解析之后、子树构建之前执行，
+        // 正好用来把当前 ColorScheme 同步进全局色板，明暗切换时它会自动重跑。
+        builder: (context, child) {
+          palette = AppPalette.of(Theme.of(context).colorScheme);
+          return child ?? const SizedBox.shrink();
+        },
         home: const Shell(),
       ),
     );
@@ -136,7 +102,7 @@ class _ShellState extends State<Shell> {
         final dockBottom = NavigationDock.margin + vp;
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF3F5FB),
+          backgroundColor: kCanvas,
           body: Stack(
             children: <Widget>[
               Positioned.fill(
@@ -205,7 +171,7 @@ class _ShellState extends State<Shell> {
   Widget _buildWide(BuildContext context) {
     final state = AppState.instance;
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5FB),
+      backgroundColor: kCanvas,
       body: SafeArea(
         child: Stack(
           children: <Widget>[
@@ -248,9 +214,9 @@ class _Rail extends StatelessWidget {
       width: 78,
       margin: const EdgeInsets.fromLTRB(18, 20, 0, 20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.86),
+        color: kCard.withOpacity(0.86),
         borderRadius: BorderRadius.circular(39),
-        border: Border.all(color: const Color(0xFFE9ECF4)),
+        border: Border.all(color: kOutline),
         boxShadow: const <BoxShadow>[
           BoxShadow(
             color: Color(0x14202B45),
@@ -345,14 +311,14 @@ class _Rail extends StatelessWidget {
             children: <Widget>[
               Icon(icon,
                   size: 21,
-                  color: active ? Colors.white : const Color(0xFF8B93A7)),
+                  color: active ? scheme.onPrimary : kInk3),
               const SizedBox(height: 2),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 10,
                   height: 1.1,
-                  color: active ? Colors.white : const Color(0xFF8B93A7),
+                  color: active ? scheme.onPrimary : kInk3,
                 ),
               ),
             ],
