@@ -25,9 +25,10 @@ X岛匿名揭示板的第三方客户端，视觉语言参考 FlClash：Material
 | `android arm64-v8a` | success | `app-arm64-v8a-release.apk`（8.0 MB） |
 | `linux x86_64` | success | `bundle/`（9.3 MB） |
 
-产物在对应 run 的 Artifacts 里，GitHub 保留 90 天。
+日常提交的产物在对应 run 的 Artifacts 里（需登录，保留 90 天）；正式版本走 tag 发布到
+[Releases](https://github.com/SyntaxEntity/AlandX/releases)，免登录下载。
 
-开发机是 aarch64，而官方只发 x64 的 Linux SDK，本地跑不起来——所以本地只能做静态检查，真实构建交给 CI。这也意味着**任何改动都要先推上去看 CI 结果**，不能只靠本机 `dart analyze`。
+官方 Linux SDK 只有 x64 归档，ARM 主机无法本地构建，因此构建一律交给 CI；本地只保留静态检查，任何改动都以 CI 结果为准。
 
 ## 运行
 
@@ -57,7 +58,7 @@ flutter run -d <device>
 |---|---|---|
 | Android arm64-v8a | ✅ | x64 机器或 CI：`flutter build apk --release --target-platform android-arm64 --split-per-abi` |
 | Linux x86_64 | ✅ | Ubuntu：`flutter build linux --release` |
-| Linux arm64 | ❌ | 官方只发 x64 的 Linux SDK，没有 arm64 版本；本机是 aarch64 也跑不了这个 SDK |
+| Linux arm64 | ❌ | 官方只发布 x64 的 Linux SDK，无 arm64 归档，ARM 主机无法本地构建 |
 
 仓库根目录的 `.github/workflows/build.yml` 会并行跑 **analyze + Android arm64 + Linux x64**，
 产物直接在 Actions 里下载。这是 ARM 设备上最省事的路径。

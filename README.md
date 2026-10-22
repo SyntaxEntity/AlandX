@@ -13,12 +13,31 @@ X岛匿名揭示板的第三方 Flutter 客户端，视觉语言参考 [FlClash]
 - 持久缓存：列表 90s / 串 10min / 版面 12h；站点 5xx 时回退旧缓存并提示
 - 订阅：UUID 机制，与服务端账号无关
 
+## 下载
+
+[**Releases**](https://github.com/SyntaxEntity/AlandX/releases) 提供预编译包，无需登录即可下载：
+
+| 平台 | 文件 |
+|---|---|
+| Android arm64-v8a | `app-arm64-v8a-release.apk` |
+| Linux x86_64 | `xd-client-linux-x64.zip` |
+
+推送 `v*` 标签会自动构建并发布：
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+日常提交只跑 CI 校验，产物在对应 run 的 Artifacts 里（需登录，保留 90 天）。
+
 ## 仓库结构
 
 ```
 client/            Flutter 工程（仓库里只有源码，平台目录由 flutter create 生成）
 preview.html       单文件静态设计预览，双击即看
-.github/workflows  CI：analyze + Android arm64 + Linux x64
+.github/workflows  build：analyze + Android arm64 + Linux x64
+                   release：推送 v* 标签时出包并发布
 ```
 
 ## 构建
@@ -30,7 +49,7 @@ flutter run -d linux
 flutter build apk --release --target-platform android-arm64 --split-per-abi
 ```
 
-也可以直接推到 GitHub 让 Actions 出包，产物在对应 workflow run 的 Artifacts 里。
+也可以直接推到 GitHub 让 CI 出包，见上方「[下载](#下载)」。
 
 ### 目标支持
 

@@ -1,0 +1,92 @@
+name: release
+
+# 推送 v* 标签即出包并发布到 Releases：
+#   git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    name: android arm64-v8a
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+      - name: scaffold platform folders
+        run: |
+          flutter create --org dev.xd --platforms=android .
+          rm -f test/widget_test.dart
+      - run: flutter pub get
+      - name: build apk
+        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: client/build/app/outputs/flutter-apk/*arm64-v8a*.apk
+          if-no-files-found: error
+
+  linux:
+    name: linux x86_64
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - name: install desktop deps
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev ninja-build zip
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+      - name: scaffold platform folders
+        run: |
+          flutter create --org dev.xd --platforms=linux .
+          rm -f test/widget_test.dart
+      - run: flutter config --enable-linux-desktop
+      - run: flutter pub get
+      - run: flutter build linux --release
+      - name: pack bundle
+        run: |
+          cd build/linux/x64/release
+          zip -qr "$GITHUB_WORKSPACE/xd-client-linux-x64.zip" bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: xd-client-linux-x64.zip
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: [android, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            $(find dist -type f | sort)
