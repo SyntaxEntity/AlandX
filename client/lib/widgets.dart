@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'image_cache.dart';
 import 'models.dart';
 import 'theme.dart';
 

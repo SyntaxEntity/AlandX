@@ -211,11 +211,11 @@ class _ThreadPageState extends State<ThreadPage> {
                   hintText: '回复内容…',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: kOutline),
+                    borderSide: BorderSide(color: kOutline),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: kOutline),
+                    borderSide: BorderSide(color: kOutline),
                   ),
                 ),
               ),
