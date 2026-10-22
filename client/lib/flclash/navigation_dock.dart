@@ -311,11 +311,18 @@ class NavigationDock extends StatelessWidget {
     required this.destinations,
     required this.selectedIndex,
     required this.onSelected,
+    this.trailingSpace = 0,
   });
 
   final List<NavigationDockDestination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+
+  /// 【本项目新增】右侧额外预留的空间。
+  ///
+  /// FlClash 的仪表盘上，「启动」按钮和底栏并排：按钮占据右下角时底栏会缩短。
+  /// 原实现在 `Padding` 的右边距上叠加这个值即可复现该行为；为 0 时与原版一致。
+  final double trailingSpace;
 
   static double heightOf(BuildContext context) {
     return _barHeight +
@@ -323,8 +330,12 @@ class NavigationDock extends StatelessWidget {
         _labelSize;
   }
 
-  static double _bottomMarginOf(BuildContext context) =>
+  /// 【本项目公开】底栏底边到屏幕底部的距离，外部按钮靠它对齐。
+  static double bottomMarginOf(BuildContext context) =>
       math.max(_edgeMargin, MediaQuery.paddingOf(context).bottom);
+
+  static double _bottomMarginOf(BuildContext context) =>
+      bottomMarginOf(context);
 
   /// The room content scrolling under the dock leaves at its foot.
   static double insetOf(BuildContext context) =>
@@ -337,7 +348,7 @@ class NavigationDock extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(
         _edgeMargin,
         _shadowRoom,
-        _edgeMargin,
+        _edgeMargin + trailingSpace,
         _bottomMarginOf(context),
       ),
       child: _HitSlop(

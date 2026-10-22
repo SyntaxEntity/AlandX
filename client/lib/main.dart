@@ -110,6 +110,27 @@ class _ShellState extends State<Shell> {
     if (ok == true) AppState.instance.loadHome(reset: true);
   }
 
+  /// 右下角「发串」圆形按钮，尺寸与底栏高度一致，和 Deck 并排。
+  Widget _composeButton(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final size = NavigationDock.heightOf(context);
+    return Material(
+      key: const ValueKey('compose_btn'),
+      color: scheme.primary,
+      shape: const CircleBorder(),
+      elevation: 2,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: _compose,
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Icon(Icons.edit_outlined, size: 24, color: scheme.onPrimary),
+        ),
+      ),
+    );
+  }
+
   /// 切栏：先更新选中态，再让页面横向滑过去。
   /// FlClash 就是这么分工的——deck 只管自己的弹性，页面切换走 `animateToPage`。
   void _goTo(int i) {
@@ -138,6 +159,8 @@ class _ShellState extends State<Shell> {
       builder: (context, _) {
         if (wide) return _buildWide(context);
 
+        final showCompose = index == 0;
+
         return Scaffold(
           backgroundColor: kCanvas,
           body: Stack(
@@ -156,36 +179,35 @@ class _ShellState extends State<Shell> {
                 ),
               ),
 
-              // 发串按钮：位置与 FlClash 的「启动」按钮一致——挂在顶部栏右侧，
-              // 和 Deck 分处屏幕两端，不贴合、不遮让、不联动位移。
-              // 显隐走 FadeScaleBox（缩放 0.4↔1 + 淡入淡出，锚点 centerRight）。
-              Positioned(
-                right: 16,
-                top: MediaQuery.paddingOf(context).top + 20,
-                child: FadeScaleBox(
-                  alignment: Alignment.centerRight,
-                  child: index == 0
-                      ? FilledButton.icon(
-                          key: const ValueKey('compose_btn'),
-                          onPressed: _compose,
-                          icon: const Icon(Icons.edit_outlined, size: 18),
-                          label: const Text('发串'),
-                        )
-                      : const SizedBox.shrink(key: ValueKey('compose_gone')),
-                ),
-              ),
-
-              // Deck 自带左右与底部留白，这里贴边放即可。
+              // 底栏 + 右下角圆形按钮，对应 FlClash 仪表盘的「启动」按钮：
+              // 两者并排在同一水平线；按钮在时底栏缩短让位，按钮消失后底栏恢复全长。
               Positioned(
                 left: 0,
                 right: 0,
                 bottom: 0,
-                child: NavigationDock(
-                  destinations: _destinations,
-                  selectedIndex: index,
-                  onSelected: (i) {
-                    if (i != index) _goTo(i);
-                  },
+                child: Stack(
+                  children: <Widget>[
+                    NavigationDock(
+                      destinations: _destinations,
+                      selectedIndex: index,
+                      // 按钮直径 + 与底栏的间距
+                      trailingSpace: showCompose ? 72 : 0,
+                      onSelected: (i) {
+                        if (i != index) _goTo(i);
+                      },
+                    ),
+                    Positioned(
+                      right: 21,
+                      bottom: NavigationDock.bottomMarginOf(context),
+                      child: FadeScaleBox(
+                        alignment: Alignment.centerRight,
+                        child: showCompose
+                            ? _composeButton(context)
+                            : const SizedBox.shrink(
+                                key: ValueKey('compose_gone')),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
