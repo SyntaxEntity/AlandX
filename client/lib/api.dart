@@ -212,6 +212,15 @@ class Api {
 
   // ---------------- 发串 / 回复 ----------------
 
+  /// 网页端写接口路径。
+  ///
+  /// X岛的 PHP 路由是 `Home/Forum/...` 这种大驼峰，而 API 侧是 `api/` 全小写，
+  /// 之前这里照 API 的风格写成了 `/home/forum/...`，Linux 下 PATH_INFO 大小写敏感，
+  /// 很可能直接 404。现在按网页端的实际写法改回来，并在 [_write] 里保留了
+  /// 大小写互搏的回退，避免部署差异导致写操作整体不可用。
+  static const String postThreadPath = '/Home/Forum/doPostThread.html';
+  static const String replyThreadPath = '/Home/Forum/doReplyThread.html';
+
   Future<PostResult> postThread({
     required String cookie,
     required int fid,
@@ -221,7 +230,7 @@ class Api {
     String? filename,
   }) {
     return _write(
-      '/home/forum/doPostThread.html',
+      postThreadPath,
       cookie: cookie,
       fields: <String, String>{
         'fid': '$fid',
@@ -242,7 +251,7 @@ class Api {
     String? filename,
   }) {
     return _write(
-      '/home/forum/doReplyThread.html',
+      replyThreadPath,
       cookie: cookie,
       fields: <String, String>{
         'resto': '$resto',
@@ -255,7 +264,19 @@ class Api {
     );
   }
 
-  Future<PostResult> _write(
+  /// 把路径里的 `Home/Forum` 换成另一种大小写，用于 404 回退。
+  @visibleForTesting
+  static String flipPathCasing(String path) {
+    if (path.contains('/Home/Forum/')) {
+      return path.replaceFirst('/Home/Forum/', '/home/forum/');
+    }
+    if (path.contains('/home/forum/')) {
+      return path.replaceFirst('/home/forum/', '/Home/Forum/');
+    }
+    return path;
+  }
+
+  Future<http.Response> _sendWrite(
     String path, {
     required String cookie,
     required Map<String, String> fields,
@@ -276,15 +297,47 @@ class Api {
         filename: (filename == null || filename.isEmpty) ? 'image.jpg' : filename,
       ));
     }
+    final streamed = await req.send().timeout(const Duration(seconds: 45));
+    return http.Response.fromStream(streamed);
+  }
 
-    http.Response res;
-    try {
-      final streamed = await req.send().timeout(const Duration(seconds: 45));
-      res = await http.Response.fromStream(streamed);
-    } on TimeoutException {
-      return const PostResult(false, '发送超时，请稍后重试');
-    } catch (e) {
-      return PostResult(false, '发送失败：$e');
+  Future<PostResult> _write(
+    String path, {
+    required String cookie,
+    required Map<String, String> fields,
+    Uint8List? image,
+    String? filename,
+  }) async {
+    final alternate = flipPathCasing(path);
+    final candidates = <String>[path, if (alternate != path) alternate];
+
+    http.Response? res;
+    for (final candidate in candidates) {
+      try {
+        res = await _sendWrite(
+          candidate,
+          cookie: cookie,
+          fields: fields,
+          image: image,
+          filename: filename,
+        );
+      } on TimeoutException {
+        return const PostResult(false, '发送超时，请稍后重试');
+      } catch (e) {
+        return PostResult(false, '发送失败：$e');
+      }
+      // 只有 404 才说明「这个路径不存在」，换一种大小写再试一次。
+      // 404 意味着请求没有被执行，重试不会造成重复发帖。
+      if (res.statusCode != 404) break;
+    }
+
+    if (res == null) return const PostResult(false, '发送失败：无响应');
+    if (res.statusCode == 404) {
+      // 两种大小写都 404，说明路由确实变了，别把 404 页面当成功去解析。
+      return const PostResult(false, '接口 404：大小写都不通，站点可能改了路由');
+    }
+    if (res.statusCode >= 400) {
+      return PostResult(false, 'HTTP ${res.statusCode}（站点可能维护中）');
     }
 
     return parseJumpHtml(utf8.decode(res.bodyBytes));

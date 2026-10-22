@@ -89,6 +89,30 @@ void main() {
     });
   });
 
+  group('写接口路径', () {
+    test('默认使用网页端的大驼峰写法', () {
+      expect(Api.postThreadPath, '/Home/Forum/doPostThread.html');
+      expect(Api.replyThreadPath, '/Home/Forum/doReplyThread.html');
+    });
+
+    test('404 回退可以互换大小写，且对无关路径原样返回', () {
+      expect(
+        Api.flipPathCasing('/Home/Forum/doPostThread.html'),
+        '/home/forum/doPostThread.html',
+      );
+      expect(
+        Api.flipPathCasing('/home/forum/doReplyThread.html'),
+        '/Home/Forum/doReplyThread.html',
+      );
+      expect(Api.flipPathCasing('/Forum/search.html'), '/Forum/search.html');
+    });
+
+    test('互换两次回到原值，保证回退不会来回抖动', () {
+      const p = '/Home/Forum/doPostThread.html';
+      expect(Api.flipPathCasing(Api.flipPathCasing(p)), p);
+    });
+  });
+
   group('CacheStore.keyOf 缓存键', () {
     test('同 path + 同饼干得到同一个键', () {
       expect(
