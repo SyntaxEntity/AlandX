@@ -15,7 +15,7 @@ X岛匿名揭示板的第三方客户端，视觉语言参考 FlClash：Material
 | 缓存 | 已实现（持久化 JSON：列表 90s、串 10min、版面 12h；5xx 时用旧缓存兜底并提示） |
 | 订阅 | 已实现（UUID 机制，与服务端账号无关） |
 | 外观 | 已实现（MD3：6 个种子色、Material 3 组件主题、深浅色跟随系统） |
-| 平台 | Android / iOS / Desktop；**不支持 Web**（接口无 CORS） |
+| 平台 | Android arm64 / Linux x64；**不支持 iOS 与 Web**（iOS 不在适配范围，Web 因接口无 CORS） |
 
 ✅ **已在 CI 上真实构建通过**（2026-10-22，run `39744311614`，Flutter 3.24.5 / ubuntu-latest）：
 
@@ -34,7 +34,7 @@ X岛匿名揭示板的第三方客户端，视觉语言参考 FlClash：Material
 
 ```bash
 # 1. 补齐平台目录（仓库里只有 lib/ 与 pubspec.yaml）
-flutter create --platforms=android,ios,linux,macos,windows .
+flutter create --platforms=android,linux .
 
 # 2. 拉依赖
 flutter pub get
@@ -45,12 +45,7 @@ flutter run -d <device>
 
 要求 Flutter **3.22 及以上**（用到 `surfaceContainer` 之前的稳定 API 与 M3 默认值），推荐 3.24 系列。
 
-图片上传用 `image_picker`：Android 走系统相册选择器（13+ 无需权限），iOS 需要往 `ios/Runner/Info.plist` 加一条：
-
-```xml
-<key>NSPhotoLibraryUsageDescription</key>
-<string>选择图片用于发串或回复</string>
-```
+图片上传用 `image_picker`，走系统相册选择器（Android 13+ 无需额外权限）。
 
 ### 构建矩阵（重要）
 

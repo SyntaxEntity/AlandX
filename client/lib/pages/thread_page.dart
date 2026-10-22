@@ -303,7 +303,7 @@ class _ThreadPageState extends State<ThreadPage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_rounded, size: 20),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Column(
@@ -320,7 +320,7 @@ class _ThreadPageState extends State<ThreadPage> {
         actions: <Widget>[
           IconButton(
             tooltip: '复制链接',
-            icon: Icon(Icons.ios_share_rounded, size: 20),
+            icon: Icon(Icons.share_rounded, size: 20),
             onPressed: _share,
           ),
           Padding(

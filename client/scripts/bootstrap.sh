@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 flutter --version
-flutter create --platforms=android,linux,macos,windows,ios .
+flutter create --platforms=android,linux,macos,windows .
 flutter pub get
 
 cat <<'TIP'

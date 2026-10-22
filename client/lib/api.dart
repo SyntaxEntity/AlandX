@@ -41,7 +41,7 @@ class SearchResult {
 /// X岛接口封装（原生直连）。
 ///
 /// 注意：api.nmb.best 不返回任何 CORS 头，所以 Flutter Web 不能直连；
-/// 本项目只面向 Android / iOS / Desktop。
+/// 本项目只面向 Android 与桌面端（不适配 iOS / Web）。
 class Api {
   Api._();
   static final Api instance = Api._();

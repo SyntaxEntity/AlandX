@@ -203,10 +203,10 @@ ThemeData buildAppTheme(Color seed, Brightness brightness) {
 
     // 各平台走各自的系统转场，避免「一眼像网页」。
     pageTransitionsTheme: const PageTransitionsTheme(
+      // 只保留 Android / 桌面：本项目不适配 iOS，不再挂 Cupertino 转场。
       builders: <TargetPlatform, PageTransitionsBuilder>{
         TargetPlatform.android: ZoomPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.macOS: ZoomPageTransitionsBuilder(),
         TargetPlatform.linux: ZoomPageTransitionsBuilder(),
         TargetPlatform.windows: ZoomPageTransitionsBuilder(),
       },

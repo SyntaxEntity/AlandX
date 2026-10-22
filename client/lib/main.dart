@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'state.dart';
 import 'theme.dart';
+import 'flclash/fade_box.dart';
 import 'flclash/navigation_dock.dart';
 import 'pages/compose_page.dart';
 import 'pages/home_page.dart';
@@ -157,20 +158,27 @@ class _ShellState extends State<Shell> {
                 ),
               ),
 
-              // 发串按钮：FlClash 没有 FAB，这里也不再自造「沉入 deck」的联动，
-              // 常驻悬浮在 Deck 上方。
+              // 发串按钮：沿用 FlClash 仪表盘「启动」按钮的 FadeScaleBox——
+              // 切换分栏时旧按钮缩小淡出、切回来放大淡入，锚点钉在右侧，
+              // 不做位移（之前那套「沉进 deck」是我自己编的，不是 FlClash 的行为）。
               Positioned(
                 right: 20,
                 bottom: NavigationDock.insetOf(context) + 8,
-                child: FloatingActionButton.extended(
-                  heroTag: 'compose',
-                  onPressed: _compose,
-                  elevation: 2,
-                  highlightElevation: 6,
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  label: const Text('发串'),
-                  backgroundColor: scheme.primary,
-                  foregroundColor: scheme.onPrimary,
+                child: FadeScaleBox(
+                  alignment: Alignment.centerRight,
+                  child: index == 0
+                      ? FloatingActionButton.extended(
+                          key: const ValueKey('compose_fab'),
+                          heroTag: 'compose',
+                          onPressed: _compose,
+                          elevation: 2,
+                          highlightElevation: 6,
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          label: const Text('发串'),
+                          backgroundColor: scheme.primary,
+                          foregroundColor: scheme.onPrimary,
+                        )
+                      : const SizedBox.shrink(key: ValueKey('compose_gone')),
                 ),
               ),
 
