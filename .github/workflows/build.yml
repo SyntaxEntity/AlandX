@@ -12,6 +12,10 @@ on:
       - 'client/**'
   workflow_dispatch:
 
+# 需要写权限才能把失败原因发成提交评论
+permissions:
+  contents: write
+
 defaults:
   run:
     working-directory: client
@@ -33,8 +37,36 @@ jobs:
           rm -f test/widget_test.dart
       - run: flutter pub get
       - name: analyze
-        # info 级别（风格建议）不阻塞，error / warning 仍然会让流水线失败
-        run: flutter analyze --no-fatal-infos
+        id: analyze
+        continue-on-error: true
+        # info 级别（风格建议）不阻塞，error / warning 仍然算失败
+        run: |
+          set +e
+          flutter analyze --no-fatal-infos 2>&1 | tee "$RUNNER_TEMP/analyze.txt"
+          exit ${PIPESTATUS[0]}
+
+      # 开发机是 aarch64 且无法本地编译，Actions 日志又需要登录才能看，
+      # 所以把失败原因以「提交评论」的形式发出来——公开仓库的评论可以匿名读取。
+      - name: report analyze errors
+        if: steps.analyze.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "### analyze 失败"
+            echo
+            echo '```'
+            head -c 12000 "$RUNNER_TEMP/analyze.txt"
+            echo
+            echo '```'
+          } > "$RUNNER_TEMP/body.md"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments" \
+            -F body=@"$RUNNER_TEMP/body.md" || echo "评论失败（token 权限不足）"
+
+      - name: gate
+        if: steps.analyze.outcome == 'failure'
+        run: exit 1
+
       - name: test
         run: flutter test
 
