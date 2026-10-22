@@ -14,6 +14,8 @@ import 'package:flutter/services.dart';
 
 import 'compat.dart';
 
+export 'compat.dart';
+
 const double _barHeight = 62;
 const double _barPadding = 4;
 const double _edgeMargin = 21;
@@ -429,7 +431,7 @@ class ElasticPress extends StatefulWidget {
   });
 
   /// Leaves a press on the button inside to the swell alone.
-  static const buttonStyle = ButtonStyle(
+  static final buttonStyle = ButtonStyle(
     splashFactory: NoSplash.splashFactory,
     overlayColor: WidgetStateProperty.resolveWith<Color?>(
       (states) => states.contains(WidgetState.pressed)

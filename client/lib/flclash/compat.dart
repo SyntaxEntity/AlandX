@@ -155,16 +155,20 @@ class LiquidGlassGlow {
 class LiquidGlassStyle {
   const LiquidGlassStyle({required this.brightness});
 
-  final Brightness brightness;
+  /// 原实现里是「亮度增益系数」（乘到通道上），不是 Brightness 枚举。
+  final double brightness;
+
+  static double _gain(ColorScheme scheme) =>
+      scheme.brightness == Brightness.dark ? 1.2 : 1.0;
 
   factory LiquidGlassStyle.pill(ColorScheme scheme) =>
-      LiquidGlassStyle(brightness: scheme.brightness);
+      LiquidGlassStyle(brightness: _gain(scheme));
 
   factory LiquidGlassStyle.lens(ColorScheme scheme) =>
-      LiquidGlassStyle(brightness: scheme.brightness);
+      LiquidGlassStyle(brightness: _gain(scheme));
 
   factory LiquidGlassStyle.lensContent(ColorScheme scheme) =>
-      LiquidGlassStyle(brightness: scheme.brightness);
+      LiquidGlassStyle(brightness: _gain(scheme));
 
   LiquidGlassStyle scale(double factor) => this;
 }
