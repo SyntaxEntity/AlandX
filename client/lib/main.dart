@@ -1,10 +1,11 @@
 // X岛客户端 · 应用入口
 // 注意：本仓库未包含平台目录，首次运行前执行 `flutter create --platforms=... .`
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'state.dart';
 import 'theme.dart';
-import 'widgets/navigation_dock.dart';
+import 'flclash/navigation_dock.dart';
 import 'pages/compose_page.dart';
 import 'pages/home_page.dart';
 import 'pages/forums_page.dart';
@@ -13,6 +14,8 @@ import 'pages/settings_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // 边到边：状态栏与导航栏都透明，内容铺到系统栏下面（沉浸式）。
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   runApp(const XdApp());
 }
 
@@ -45,8 +48,23 @@ class _XdAppState extends State<XdApp> {
         // MaterialApp.builder 在主题解析之后、子树构建之前执行，
         // 正好用来把当前 ColorScheme 同步进全局色板，明暗切换时它会自动重跑。
         builder: (context, child) {
-          palette = AppPalette.of(Theme.of(context).colorScheme);
-          return child ?? const SizedBox.shrink();
+          final scheme = Theme.of(context).colorScheme;
+          palette = AppPalette.of(scheme);
+          // 状态栏/导航栏透明 + 图标亮度跟随明暗，才是真正的沉浸式。
+          final dark = scheme.brightness == Brightness.dark;
+          return AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarIconBrightness:
+                  dark ? Brightness.light : Brightness.dark,
+              statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+              systemNavigationBarColor: Colors.transparent,
+              systemNavigationBarDividerColor: Colors.transparent,
+              systemNavigationBarIconBrightness:
+                  dark ? Brightness.light : Brightness.dark,
+            ),
+            child: child ?? const SizedBox.shrink(),
+          );
         },
         home: const Shell(),
       ),
@@ -78,10 +96,10 @@ class _ShellState extends State<Shell> {
 
   static const List<NavigationDockDestination> _destinations =
       <NavigationDockDestination>[
-    NavigationDockDestination(icon: Icons.dynamic_feed_rounded, label: '时间线'),
-    NavigationDockDestination(icon: Icons.grid_view_rounded, label: '版面'),
-    NavigationDockDestination(icon: Icons.bookmark_rounded, label: '订阅'),
-    NavigationDockDestination(icon: Icons.tune_rounded, label: '设置'),
+    NavigationDockDestination(glyph: Glyph(Icons.dynamic_feed_rounded), label: '时间线'),
+    NavigationDockDestination(glyph: Glyph(Icons.grid_view_rounded), label: '版面'),
+    NavigationDockDestination(glyph: Glyph(Icons.bookmark_rounded), label: '订阅'),
+    NavigationDockDestination(glyph: Glyph(Icons.tune_rounded), label: '设置'),
   ];
 
   Future<void> _compose() async {
@@ -91,14 +109,16 @@ class _ShellState extends State<Shell> {
     if (ok == true) AppState.instance.loadHome(reset: true);
   }
 
-  /// Deck 的位置变化 → 页面同步位移。
-  void _syncPageTo(double pos) {
+  /// 切栏：先更新选中态，再让页面横向滑过去。
+  /// FlClash 就是这么分工的——deck 只管自己的弹性，页面切换走 `animateToPage`。
+  void _goTo(int i) {
+    AppState.instance.setTab(i);
     if (!_pc.hasClients) return;
-    final width = _pc.position.viewportDimension;
-    if (width <= 0) return;
-    final target = pos * width;
-    if ((_pc.offset - target).abs() < 0.5) return;
-    _pc.jumpTo(target);
+    _pc.animateToPage(
+      i,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -118,9 +138,6 @@ class _ShellState extends State<Shell> {
         if (wide) return _buildWide(context);
 
         final scheme = Theme.of(context).colorScheme;
-        final vp = MediaQuery.viewPaddingOf(context).bottom;
-        final showFab = index == 0;
-        final dockBottom = NavigationDock.margin + vp;
 
         return Scaffold(
           backgroundColor: kCanvas,
@@ -129,8 +146,7 @@ class _ShellState extends State<Shell> {
               Positioned.fill(
                 child: SafeArea(
                   bottom: false,
-                  // 关键：不给整页加底部内边距。
-                  // 内容可以一直滚到 Deck 下方（这才是「悬浮」），
+                  // 不给整页加底部内边距：内容滚到 Deck 下方才是「悬浮」，
                   // 末端留白交给各页面自己的 NavigationDock.insetOf。
                   child: PageView.builder(
                     controller: _pc,
@@ -141,48 +157,33 @@ class _ShellState extends State<Shell> {
                 ),
               ),
 
-              // 发串按钮：在第 0 栏浮在 Deck 之上；切到别的栏时下沉、缩小并淡出，
-              // 视觉上是「收进 Deck 里」，因为 Deck 在 Stack 中排在它后面，会盖住它。
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                right: showFab ? 20 : 40,
-                bottom: showFab ? dockBottom + NavigationDock.height + 14 : dockBottom + 12,
-                child: IgnorePointer(
-                  ignoring: !showFab,
-                  child: AnimatedOpacity(
-                    opacity: showFab ? 1 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOut,
-                    child: AnimatedScale(
-                      scale: showFab ? 1 : 0.32,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
-                      child: FloatingActionButton.extended(
-                        heroTag: 'compose',
-                        onPressed: _compose,
-                        elevation: 2,
-                        highlightElevation: 6,
-                        icon: const Icon(Icons.edit_outlined, size: 20),
-                        label: const Text('发串'),
-                        backgroundColor: scheme.primary,
-                        foregroundColor: scheme.onPrimary,
-                      ),
-                    ),
-                  ),
+              // 发串按钮：FlClash 没有 FAB，这里也不再自造「沉入 deck」的联动，
+              // 常驻悬浮在 Deck 上方。
+              Positioned(
+                right: 20,
+                bottom: NavigationDock.insetOf(context) + 8,
+                child: FloatingActionButton.extended(
+                  heroTag: 'compose',
+                  onPressed: _compose,
+                  elevation: 2,
+                  highlightElevation: 6,
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  label: const Text('发串'),
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
                 ),
               ),
 
+              // Deck 自带左右与底部留白，这里贴边放即可。
               Positioned(
-                left: NavigationDock.margin,
-                right: NavigationDock.margin,
-                bottom: dockBottom,
+                left: 0,
+                right: 0,
+                bottom: 0,
                 child: NavigationDock(
                   destinations: _destinations,
                   selectedIndex: index,
-                  onProgress: _syncPageTo,
                   onSelected: (i) {
-                    if (i != index) AppState.instance.setTab(i);
+                    if (i != index) _goTo(i);
                   },
                 ),
               ),

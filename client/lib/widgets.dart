@@ -10,7 +10,7 @@ import 'theme.dart';
 // ColorScheme 走的 getter，明暗模式都能用。
 // 这里 re-export，让原本 `import '../widgets.dart'` 的文件不用逐个改 import。
 export 'image_cache.dart';
-export 'widgets/navigation_dock.dart';
+export 'flclash/navigation_dock.dart';
 export 'theme.dart'
     show kInk, kInk2, kInk3, kOutline, kCanvas, kCard, kChip, palette;
 

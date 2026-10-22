@@ -96,7 +96,7 @@ class _ForumsPageState extends State<ForumsPage> {
             else
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(wide ? 32 : 16, 16,
-                    wide ? 32 : 16, NavigationDock.insetOf(context) + 8),
+                    wide ? 32 : 16, NavigationDock.insetOf(context)),
                 sliver: SliverGrid(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 260,

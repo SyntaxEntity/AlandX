@@ -60,6 +60,15 @@ flutter build apk --release --target-platform android-arm64 --split-per-abi
 | Linux x86_64 | ✅ |
 | Linux arm64 | ❌ Flutter 官方不提供 arm64 的 Linux SDK |
 
+## 许可
+
+本项目以 **GNU General Public License v3.0** 分发，全文见 [LICENSE](LICENSE)。
+
+原因：悬浮底栏（`client/lib/flclash/`）移植自 [FlClash](https://github.com/chen08209/FlClash)，
+该项目以 GPL-3.0 发布。GPL 具有传染性，因此整个项目一并以 GPL-3.0 开源。
+`client/lib/flclash/` 下文件保留原版权声明，改动集中在 `compat.dart`（图标类型与
+Liquid Glass 依赖的兼容层）。
+
 ## 声明
 
 内容版权归 X岛及其用户所有。本项目不提供登录自动化、不抓取未授权内容、不做公开镜像。
