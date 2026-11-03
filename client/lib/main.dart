@@ -39,40 +39,45 @@ class _XdAppState extends State<XdApp> {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: state,
-      builder: (context, _) => MaterialApp(
-        title: 'X岛',
-        debugShowCheckedModeBanner: false,
-        theme: buildAppTheme(state.seed, Brightness.light),
-        darkTheme: buildAppTheme(state.seed, Brightness.dark),
-        themeMode: ThemeMode.system,
-        // 主题切换必须即时生效。
-        // MaterialApp 默认用 AnimatedTheme 做 200ms 插值，换成新种子色的那一帧
-        // `Theme.of` 拿到的还是旧色；而页面大多只读全局 `palette`、不依赖 Theme.of，
-        // 它们只会在「状态通知」那一帧重建一次，正好取到插值初值，于是永远停在旧配色。
-        // 把时长压到 0，palette 和 Theme 在同一帧就都到终值。
-        themeAnimationDuration: Duration.zero,
-        // MaterialApp.builder 在主题解析之后、子树构建之前执行，
-        // 正好用来把当前 ColorScheme 同步进全局色板，明暗切换时它会自动重跑。
-        builder: (context, child) {
-          final scheme = Theme.of(context).colorScheme;
-          palette = AppPalette.of(scheme);
-          // 状态栏/导航栏透明 + 图标亮度跟随明暗，才是真正的沉浸式。
-          final dark = scheme.brightness == Brightness.dark;
-          return AnnotatedRegion<SystemUiOverlayStyle>(
-            value: SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarIconBrightness:
-                  dark ? Brightness.light : Brightness.dark,
-              statusBarBrightness: dark ? Brightness.dark : Brightness.light,
-              systemNavigationBarColor: Colors.transparent,
-              systemNavigationBarDividerColor: Colors.transparent,
-              systemNavigationBarIconBrightness:
-                  dark ? Brightness.light : Brightness.dark,
-            ),
-            child: child ?? const SizedBox.shrink(),
-          );
-        },
-        home: const Shell(),
+      builder: (context, _) => KeyedSubtree(
+        // 换主题时整棵树按 seed 重建一次。
+        //
+        // 试过两条「部分刷新」的路子都不稳：页面 widget 换代、以及关掉
+        // MaterialApp 的主题补间，真机上仍然要重启才变色——说明链路上还有个
+        // 环节不吃通知。与其继续猜，不如让子树彻底重建：效果等价于重启，
+        // 但不用真的退出应用。代价只是当前页滚动位置回到顶部（tab 存在全局状态里，
+        // 分栏不会丢）。
+        key: ValueKey<int>(state.seed.value),
+        child: MaterialApp(
+          title: 'X岛',
+          debugShowCheckedModeBanner: false,
+          theme: buildAppTheme(state.seed, Brightness.light),
+          darkTheme: buildAppTheme(state.seed, Brightness.dark),
+          themeMode: ThemeMode.system,
+          themeAnimationDuration: Duration.zero,
+          // MaterialApp.builder 在主题解析之后、子树构建之前执行，
+          // 正好用来把当前 ColorScheme 同步进全局色板，明暗切换时它会自动重跑。
+          builder: (context, child) {
+            final scheme = Theme.of(context).colorScheme;
+            palette = AppPalette.of(scheme);
+            // 状态栏/导航栏透明 + 图标亮度跟随明暗，才是真正的沉浸式。
+            final dark = scheme.brightness == Brightness.dark;
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness:
+                    dark ? Brightness.light : Brightness.dark,
+                statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+                systemNavigationBarColor: Colors.transparent,
+                systemNavigationBarDividerColor: Colors.transparent,
+                systemNavigationBarIconBrightness:
+                    dark ? Brightness.light : Brightness.dark,
+              ),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+          home: const Shell(),
+        ),
       ),
     );
   }
@@ -203,15 +208,18 @@ class _ShellState extends State<Shell> {
           body: Stack(
             children: <Widget>[
               Positioned.fill(
-                child: SafeArea(
-                  bottom: false,
-                  // 不给整页加底部内边距：内容滚到 Deck 下方才是「悬浮」，
-                  // 末端留白交给各页面自己的 NavigationDock.insetOf。
-                  child: PageView.builder(
-                    controller: _pc,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: pages.length,
-                    itemBuilder: (_, i) => _KeepAlivePage(child: pages[i]),
+                // 首页不套顶部 SafeArea：banner 收成顶栏时要一直铺到状态栏下面，
+                // 才谈得上「同步改变通知栏颜色」。其余分栏照旧交给 SafeArea。
+                child: PageView.builder(
+                  controller: _pc,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: pages.length,
+                  itemBuilder: (_, i) => _KeepAlivePage(
+                    child: SafeArea(
+                      top: i != 0,
+                      bottom: false,
+                      child: pages[i],
+                    ),
                   ),
                 ),
               ),
@@ -380,7 +388,7 @@ class _Rail extends StatelessWidget {
           _railBtn(context, 3, Icons.tune_rounded, '设置'),
           const Spacer(),
           Tooltip(
-            message: ok ? '接口正常' : '接口异常',
+            message: ok ? '连接正常' : '连接异常',
             child: Container(
               width: 8,
               height: 8,

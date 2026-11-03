@@ -1,11 +1,12 @@
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models.dart';
 import '../state.dart';
 import '../widgets.dart';
-import 'cookie_help.dart';
+import 'cookie_claim.dart';
 import 'search_page.dart';
 import 'thread_page.dart';
 
@@ -35,6 +36,8 @@ class _HomePageState extends State<HomePage> {
       animation: state,
       builder: (context, _) {
         final wide = MediaQuery.sizeOf(context).width >= 980;
+        // 首页没套顶部 SafeArea（banner 要铺到状态栏下面），所以自己把状态栏高度补回来。
+        final topInset = MediaQuery.paddingOf(context).top;
         return RefreshIndicator(
           onRefresh: _refresh,
           color: Theme.of(context).colorScheme.primary,
@@ -47,7 +50,7 @@ class _HomePageState extends State<HomePage> {
                     constraints: const BoxConstraints(maxWidth: 980),
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
-                          wide ? 32 : 16, 26, wide ? 32 : 16, 0),
+                          wide ? 32 : 16, 26 + topInset, wide ? 32 : 16, 0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
@@ -69,10 +72,10 @@ class _HomePageState extends State<HomePage> {
                 delegate: _HeroHeaderDelegate(
                   title: state.source.name,
                   loading: state.loading,
-                  latencyMs: state.upstreamMs,
                   count: state.threads.length,
                   page: state.page,
                   horizontalBase: wide ? 32 : 16,
+                  topInset: topInset,
                   onRefresh: _refresh,
                 ),
               ),
@@ -149,8 +152,9 @@ class _HomePageState extends State<HomePage> {
               minimumSize: const Size(0, 34),
               padding: const EdgeInsets.symmetric(horizontal: 8),
             ),
-            onPressed: () => Navigator.of(context).push(CookieHelpPage.route()),
-            child: const Text('怎么弄', style: TextStyle(fontSize: 12.5)),
+            onPressed: () =>
+                Navigator.of(context).push(CookieClaimPage.route()),
+            child: const Text('去领取', style: TextStyle(fontSize: 12.5)),
           ),
           IconButton(
             visualDensity: VisualDensity.compact,
@@ -180,7 +184,7 @@ class _HomePageState extends State<HomePage> {
                       color: kInk)),
               SizedBox(height: 5),
               Text(
-                '来源 ${state.source.isForum ? '/showf' : '/timeline'} · 20 条一页',
+                '下拉刷新 · 点按查看',
                 style: TextStyle(fontSize: 12.5, color: kInk2),
               ),
             ],
@@ -217,7 +221,7 @@ class _HomePageState extends State<HomePage> {
           locked: line.needsCookie,
           onTap: () {
             if (line.needsCookie) {
-              _toast('「${line.name}」需要饼干：匿名访问会返回“必须登入领取饼干后才可以访问”');
+              _toast('「${line.name}」需要饼干才能看');
               return;
             }
             state.setSource(Source.timeline(line.id, line.name));
@@ -345,18 +349,17 @@ class _HeroCard extends StatelessWidget {
     required this.t,
     required this.title,
     required this.loading,
-    required this.latencyMs,
     required this.count,
     required this.page,
     required this.onRefresh,
     required this.horizontalBase,
+    required this.topInset,
   });
 
   /// 0 = 展开，1 = 收成胶囊。
   final double t;
   final String title;
   final bool loading;
-  final int latencyMs;
   final int count;
   final int page;
   final Future<void> Function() onRefresh;
@@ -364,16 +367,15 @@ class _HeroCard extends StatelessWidget {
   /// 页面统一的左右留白（宽屏 32、窄屏 16）。
   final double horizontalBase;
 
+  /// 状态栏高度。收成顶栏后要连状态栏一起染上，才算真正「融入」。
+  final double topInset;
+
   /// 展开态/收起态的内容高度。
   static const double expandedContent = 84;
   static const double collapsedContent = 46;
 
-  /// 上方留白：展开时贴近上文，收起时留出悬浮的空隙。
+  /// 上方留白：展开时贴近上文，收起时顶到屏幕最上面。
   static const double expandedGap = 18;
-  static const double collapsedGap = 6;
-
-  static double get maxExtent => expandedContent + expandedGap;
-  static double get minExtent => collapsedContent + collapsedGap;
 
   @override
   Widget build(BuildContext context) {
@@ -383,18 +385,17 @@ class _HeroCard extends StatelessWidget {
     final g3 = Color.lerp(scheme.primary, const Color(0xFF8B5CF6), 0.85)!;
 
     // 几何量必须线性：header 的高度按 shrinkOffset 线性收，
-    // 这里对不上就会出现「胶囊没贴着顶」的错位。
-    final h = lerpDouble(expandedContent, collapsedContent, t)!;
-    final gap = lerpDouble(expandedGap, collapsedGap, t)!;
-    // 收起时两侧再退让，宽度收窄成胶囊，而不是单纯把卡片压扁。
-    final side = lerpDouble(0, 44, t)!;
-    final radius = lerpDouble(24, h / 2, t)!;
+    // 这里对不上就会出现「顶栏没贴住顶部」的错位。
+    final h = lerpDouble(expandedContent, topInset + collapsedContent, t)!;
+    final gap = lerpDouble(expandedGap, 0, t)!;
+    // 收起时两侧留白收到 0：贴着屏幕边缘的顶栏，不再悬浮。
+    final side = lerpDouble(horizontalBase, 0, t)!;
+    final radius = lerpDouble(24, 0, t)!;
     final showExpanded = (1 - t * 2.4).clamp(0.0, 1.0);
     final showCollapsed = ((t - 0.42) * 2.2).clamp(0.0, 1.0);
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          horizontalBase + side, gap, horizontalBase + side, 0),
+    final bar = Padding(
+      padding: EdgeInsets.fromLTRB(side, gap, side, 0),
       child: Container(
         height: h,
         decoration: BoxDecoration(
@@ -437,13 +438,22 @@ class _HeroCard extends StatelessWidget {
         ),
       ),
     );
+
+    if (t < 0.5) return bar;
+    // 顶栏盖住状态栏时，把通知栏一起染成同一底色、图标转白，
+    // 状态栏和内容之间才没有一条突兀的分界。
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: g1,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: bar,
+    );
   }
 
   Widget _expanded() {
-    final meta = loading
-        ? '正在拉取第 $page 页…'
-        : '第 $page 页 · 已加载 $count 条'
-            '${latencyMs == 0 ? '' : ' · ${latencyMs}ms'}';
+    final meta = loading ? '正在加载…' : '第 $page 页 · 共 $count 条';
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 0, 12, 0),
       child: Row(
@@ -484,27 +494,35 @@ class _HeroCard extends StatelessWidget {
   }
 
   Widget _collapsed() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          const Icon(Icons.dynamic_feed_rounded,
-              size: 15, color: Colors.white70),
-          const SizedBox(width: 7),
-          Flexible(
-            child: Text(title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white)),
+    // 顶栏高度里含状态栏，所以内容只占最下面那 46。
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SizedBox(
+        height: collapsedContent,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              const Icon(Icons.dynamic_feed_rounded,
+                  size: 15, color: Colors.white70),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white)),
+              ),
+              const SizedBox(width: 7),
+              Text('$count 条',
+                  style:
+                      const TextStyle(fontSize: 11.5, color: Colors.white70)),
+            ],
           ),
-          const SizedBox(width: 7),
-          Text('$count 条',
-              style: const TextStyle(fontSize: 11.5, color: Colors.white70)),
-        ],
+        ),
       ),
     );
   }
@@ -541,26 +559,31 @@ class _HeroHeaderDelegate extends SliverPersistentHeaderDelegate {
   _HeroHeaderDelegate({
     required this.title,
     required this.loading,
-    required this.latencyMs,
     required this.count,
     required this.page,
     required this.horizontalBase,
+    required this.topInset,
     required this.onRefresh,
   });
 
   final String title;
   final bool loading;
-  final int latencyMs;
   final int count;
   final int page;
   final double horizontalBase;
+  final double topInset;
   final Future<void> Function() onRefresh;
 
+  /// 收起后要给状态栏让出高度，顶栏底色才能一直铺到屏幕最上面。
   @override
-  double get maxExtent => _HeroCard.maxExtent;
+  double get minExtent => topInset + _HeroCard.collapsedContent;
 
   @override
-  double get minExtent => _HeroCard.minExtent;
+  double get maxExtent {
+    final expanded = _HeroCard.expandedGap + _HeroCard.expandedContent;
+    // 状态栏特别高时（横屏/平板）别让 min 超过 max。
+    return expanded > minExtent ? expanded : minExtent + 8;
+  }
 
   @override
   Widget build(
@@ -574,10 +597,10 @@ class _HeroHeaderDelegate extends SliverPersistentHeaderDelegate {
           t: t,
           title: title,
           loading: loading,
-          latencyMs: latencyMs,
           count: count,
           page: page,
           horizontalBase: horizontalBase,
+          topInset: topInset,
           onRefresh: onRefresh,
         ),
       ),
@@ -588,10 +611,10 @@ class _HeroHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant _HeroHeaderDelegate old) =>
       old.title != title ||
       old.loading != loading ||
-      old.latencyMs != latencyMs ||
       old.count != count ||
       old.page != page ||
-      old.horizontalBase != horizontalBase;
+      old.horizontalBase != horizontalBase ||
+      old.topInset != topInset;
 }
 
 class _Pill extends StatelessWidget {

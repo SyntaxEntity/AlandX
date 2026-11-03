@@ -118,7 +118,7 @@ class Api {
     } on TimeoutException {
       final stale = _staleOrNull(key);
       if (stale != null) return stale;
-      throw ApiException('上游 25s 未响应');
+      throw ApiException('网络不太顺，稍后再试');
     } catch (e) {
       final stale = _staleOrNull(key);
       if (stale != null) return stale;
@@ -130,7 +130,7 @@ class Api {
     if (res.statusCode >= 500) {
       final stale = _staleOrNull(key);
       if (stale != null) return stale;
-      throw ApiException('HTTP ${res.statusCode}（站点可能维护中）');
+      throw ApiException('站点没响应（${res.statusCode}），稍后再试');
     }
     if (res.statusCode != 200) {
       throw ApiException('HTTP ${res.statusCode}');
@@ -145,7 +145,7 @@ class Api {
 
     if (data is Map && data['success'] == false) {
       throw ApiException(
-          asStr(data['error']).isEmpty ? '接口返回失败' : asStr(data['error']));
+          asStr(data['error']).isEmpty ? '没拿到数据' : asStr(data['error']));
     }
 
     lastFromCache = false;
@@ -341,13 +341,13 @@ class Api {
       if (res.statusCode != 404) break;
     }
 
-    if (res == null) return const PostResult(false, '发送失败：无响应');
+    if (res == null) return const PostResult(false, '没有响应，稍后再试');
     if (res.statusCode == 404) {
       // 两种大小写都 404，说明路由确实变了，别把 404 页面当成功去解析。
-      return const PostResult(false, '接口 404：大小写都不通，站点可能改了路由');
+      return const PostResult(false, '发送失败，站点可能正在调整');
     }
     if (res.statusCode >= 400) {
-      return PostResult(false, 'HTTP ${res.statusCode}（站点可能维护中）');
+      return PostResult(false, '站点没响应（${res.statusCode}），稍后再试');
     }
 
     return parseJumpHtml(utf8.decode(res.bodyBytes));
@@ -535,7 +535,7 @@ class Api {
         : RegExp(r'''value=["']([^"']+)["']''', caseSensitive: false)
             .firstMatch(tag);
     if (m == null) {
-      throw ApiException('登录页结构变了，没找到 __hash__ 令牌');
+      throw ApiException('登录页打不开了，稍后再试');
     }
     return m.group(1)!;
   }

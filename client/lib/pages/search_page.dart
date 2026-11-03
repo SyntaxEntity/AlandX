@@ -96,8 +96,7 @@ class _SearchPageState extends State<SearchPage> {
         child: Padding(
           padding: EdgeInsets.all(28),
           child: Text(
-            '搜索用的是网页表单，不是 JSON 接口。\n'
-            '未登录可能拿不到结果，建议先导入饼干。',
+            '未登录时可能搜不到内容，\n建议先领取饼干再试。',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12.5, height: 1.9, color: kInk3),
           ),

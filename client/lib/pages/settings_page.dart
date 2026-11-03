@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../api.dart';
 import '../cache.dart';
 import '../state.dart';
 import '../widgets.dart';
@@ -47,11 +46,9 @@ class _SettingsPageState extends State<SettingsPage> {
                             letterSpacing: -0.5,
                             color: kInk)),
                     SizedBox(height: 5),
-                    Text('接口、外观与缓存',
+                    Text('外观与缓存',
                         style: TextStyle(fontSize: 12.5, color: kInk2)),
                     const SizedBox(height: 18),
-                    _apiCard(),
-                    const SizedBox(height: 14),
                     _themeCard(),
                     const SizedBox(height: 14),
                     _cacheCard(),
@@ -67,67 +64,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _apiCard() {
-    return SurfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text('接口',
-                    style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600)),
-              ),
-              Text('直连',
-                  style: TextStyle(fontSize: 11, color: kInk3)),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: <Widget>[
-              SizedBox(
-                width: 88,
-                child: Text('API 基址',
-                    style: TextStyle(fontSize: 12.5, color: kInk2)),
-              ),
-              Expanded(
-                child: SelectableText(
-                  Api.apiBase,
-                  style: TextStyle(
-                      fontSize: 12, fontFamily: 'monospace', color: kInk),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Row(
-            children: <Widget>[
-              SizedBox(
-                width: 88,
-                child: Text('主站',
-                    style: TextStyle(fontSize: 12.5, color: kInk2)),
-              ),
-              Expanded(
-                child: SelectableText(
-                  Api.webBase,
-                  style: TextStyle(
-                      fontSize: 12, fontFamily: 'monospace', color: kInk),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          Text(
-            '主站域名会漂移（nmbxd.com 已 301 到 www.nmbxd1.com）。'
-            '若某天接口整体失效，优先检查这里，再改 lib/api.dart 的 apiBase。',
-            style: TextStyle(fontSize: 12, height: 1.7, color: kInk2),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _themeCard() {
     return SurfaceCard(
       child: Column(
@@ -140,13 +76,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     style: TextStyle(
                         fontSize: 15, fontWeight: FontWeight.w600)),
               ),
-              Text('Material 3 · 种子色',
+              Text('主题色',
                   style: TextStyle(fontSize: 11, color: kInk3)),
             ],
           ),
           SizedBox(height: 8),
           Text(
-            '一个种子色生成整套配色，和 FlClash 的做法一致。',
+            '挑一个喜欢的颜色，界面会跟着变。',
             style: TextStyle(fontSize: 12.5, height: 1.7, color: kInk2),
           ),
           const SizedBox(height: 14),
@@ -200,8 +136,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     style: TextStyle(
                         fontSize: 15, fontWeight: FontWeight.w600)),
               ),
-              Text('持久化',
-                  style: TextStyle(fontSize: 11, color: kInk3)),
             ],
           ),
           SizedBox(height: 10),
@@ -209,20 +143,7 @@ class _SettingsPageState extends State<SettingsPage> {
             children: <Widget>[
               SizedBox(
                 width: 88,
-                child: Text('最近耗时',
-                    style: TextStyle(fontSize: 12.5, color: kInk2)),
-              ),
-              Text(
-                _state.upstreamMs == 0 ? '—' : '${_state.upstreamMs} ms',
-                style: TextStyle(fontSize: 12.5, color: kInk),
-              ),
-            ],
-          ),
-          Row(
-            children: <Widget>[
-              SizedBox(
-                width: 88,
-                child: Text('缓存条目',
+                child: Text('已缓存',
                     style: TextStyle(fontSize: 12.5, color: kInk2)),
               ),
               Text('${CacheStore.instance.count} 条',
@@ -237,11 +158,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SnackBar(content: Text('缓存已清空')),
               );
             },
-            child: Text('清空接口缓存'),
+            child: Text('清空缓存'),
           ),
           SizedBox(height: 8),
           Text(
-            '列表缓存 90 秒、串 10 分钟、版面 12 小时；网络失败时会用过期缓存兜底，并在列表上方标注。',
+            '网络不好时会先显示上次的内容，并在列表上方标出来。',
             style: TextStyle(fontSize: 12, height: 1.7, color: kInk2),
           ),
         ],
@@ -257,14 +178,13 @@ class _SettingsPageState extends State<SettingsPage> {
           Text('关于',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           SizedBox(height: 10),
-          Text('X岛客户端 0.1.0 · 非官方',
+          Text('X岛客户端 · 非官方',
               style: TextStyle(fontSize: 12.5, color: kInk2)),
           SizedBox(height: 10),
           Text(
-            '• 接口非官方、无文档承诺，随时可能失效\n'
-            '• 饼干只存本机，不上传任何服务器\n'
-            '• 不提供登录自动化，不抓取未授权内容\n'
-            '• 内容来自 X岛 用户，客户端不承担审核义务',
+            '• 非官方客户端，与 X岛 官方无关\n'
+            '• 内容来自 X岛 用户，请遵守站点规则\n'
+            '• 饼干只存在本机，不会上传到任何地方',
             style: TextStyle(fontSize: 12, height: 2, color: kInk2),
           ),
         ],

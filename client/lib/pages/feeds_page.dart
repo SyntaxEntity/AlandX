@@ -384,7 +384,7 @@ class _FeedsPageState extends State<FeedsPage> {
           ),
           SizedBox(height: 8),
           Text(
-            '订阅接口只认 UUID，不校验账号。换设备时导入同一个 UUID 就能同步收藏。',
+            '换设备时把下面这串代码填到新设备，收藏就能同步。',
             style: TextStyle(fontSize: 12.5, height: 1.7, color: kInk2),
           ),
           SizedBox(height: 10),
@@ -492,11 +492,6 @@ class _FeedsPageState extends State<FeedsPage> {
               '2. 进入「饼干」页领取/装备一块，页面二维码内容是 {"cookie":"…","name":"…"}\n'
               '3. 在客户端粘贴导入，即可访问受限版面并以其身份发串',
               style: TextStyle(fontSize: 13, height: 1.9, color: kInk2),
-            ),
-            SizedBox(height: 8),
-            Text(
-              '接口约定：Cookie 键名固定为 userhash；缺失时返回「必须登入领取饼干后才可以访问」。',
-              style: TextStyle(fontSize: 11.5, height: 1.7, color: kInk3),
             ),
           ],
         ),
