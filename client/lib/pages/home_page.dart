@@ -390,7 +390,10 @@ class _HeroCard extends StatelessWidget {
     final gap = lerpDouble(expandedGap, 0, t)!;
     // 收起时两侧留白收到 0：贴着屏幕边缘的顶栏，不再悬浮。
     final side = lerpDouble(horizontalBase, 0, t)!;
-    final radius = lerpDouble(24, 0, t)!;
+    // 顶边收成直角（上面是状态栏，圆角会被裁掉），底边保留圆角，
+    // 和页面里 20 圆角的卡片是同一套语言。
+    final radiusTop = lerpDouble(24, 0, t)!;
+    final radiusBottom = lerpDouble(24, 22, t)!;
     final showExpanded = (1 - t * 2.4).clamp(0.0, 1.0);
     final showCollapsed = ((t - 0.42) * 2.2).clamp(0.0, 1.0);
 
@@ -404,7 +407,10 @@ class _HeroCard extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(radius),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(radiusTop),
+            bottom: Radius.circular(radiusBottom),
+          ),
           boxShadow: <BoxShadow>[
             BoxShadow(
               color: g1.withOpacity(lerpDouble(0.26, 0.32, t)!),
@@ -440,11 +446,13 @@ class _HeroCard extends StatelessWidget {
     );
 
     if (t < 0.5) return bar;
-    // 顶栏盖住状态栏时，把通知栏一起染成同一底色、图标转白，
-    // 状态栏和内容之间才没有一条突兀的分界。
+    // 状态栏保持透明：顶栏的渐变已经铺到屏幕最上面了。
+    // 之前给状态栏填纯色（statusBarColor: primary），等于在渐变上压了一条
+    // 色差明显的横带，怎么调都对不齐——纯色和渐变色本来就不可能一致。
+    // 这里只负责把状态栏图标转成白色。
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: g1,
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
       ),
