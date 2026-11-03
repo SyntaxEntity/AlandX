@@ -135,4 +135,67 @@ void main() {
       );
     });
   });
+
+  // 领取饼干走的是网页登录，没有结构化返回，全靠解析 HTML。
+  // 站点改一个属性这套逻辑就可能失效，所以必须有回归测试兜着。
+  group('parseClaimHash 登录页令牌', () {
+    const page =
+        '<form><input type="hidden" name="__hash__" value="a1b2_c3d4" /></form>';
+
+    test('取 name 在前的 __hash__', () {
+      expect(api.parseClaimHash(page), 'a1b2_c3d4');
+    });
+
+    test('value 在 name 之前也能取到', () {
+      expect(
+        api.parseClaimHash('<input type="hidden" value="xy_z" name="__hash__">'),
+        'xy_z',
+      );
+    });
+
+    test('大小写不敏感', () {
+      expect(
+        api.parseClaimHash('<INPUT NAME="__HASH__" VALUE="Up_Case">'),
+        'Up_Case',
+      );
+    });
+
+    test('页面里没有 __hash__ 时抛 ApiException', () {
+      expect(() => api.parseClaimHash('<form></form>'),
+          throwsA(isA<ApiException>()));
+    });
+  });
+
+  group('parseLoginError 登录失败原因', () {
+    test('取 <p class="error"> 的文案', () {
+      expect(
+        api.parseLoginError('<div><p class="error">验证码错误</p></div>'),
+        '验证码错误',
+      );
+    });
+
+    test('class 里混了别的名字也认得 error', () {
+      expect(
+        api.parseLoginError('<p class="am-error text">密码错误</p>'),
+        '密码错误',
+      );
+    });
+
+    test('没有 error 标签时按关键词兜底', () {
+      expect(api.parseLoginError('<div>验证码不正确</div>'), '验证码错误');
+      expect(api.parseLoginError('<div>密码不对</div>'), '账号或密码不对');
+    });
+
+    test('完全认不出时给通用文案', () {
+      expect(api.parseLoginError('<html></html>'), contains('登录没成功'));
+    });
+
+    test('标签里的样式内容不会混进文案', () {
+      expect(
+        api.parseLoginError(
+            '<p class="error"><style>p{color:red}</style>验证码错误</p>'),
+        '验证码错误',
+      );
+    });
+  });
 }

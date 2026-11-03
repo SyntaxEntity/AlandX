@@ -525,10 +525,15 @@ class Api {
 
   @visibleForTesting
   String parseClaimHash(String html) {
-    final m = RegExp(
-      r'''name=["']__hash__["'][^>]*value=["']([^"']+)["']''',
-      caseSensitive: false,
-    ).firstMatch(html);
+    // 先定位含 __hash__ 的 input 标签，再在标签内取 value，
+    // 这样 name/value 谁在前谁在后都认得，不会因为属性顺序变化就挂。
+    final tag = RegExp(r'<input[^>]*__hash__[^>]*>', caseSensitive: false)
+        .firstMatch(html)
+        ?.group(0);
+    final m = tag == null
+        ? null
+        : RegExp(r'''value=["']([^"']+)["']''', caseSensitive: false)
+            .firstMatch(tag);
     if (m == null) {
       throw ApiException('登录页结构变了，没找到 __hash__ 令牌');
     }
