@@ -45,6 +45,12 @@ class _XdAppState extends State<XdApp> {
         theme: buildAppTheme(state.seed, Brightness.light),
         darkTheme: buildAppTheme(state.seed, Brightness.dark),
         themeMode: ThemeMode.system,
+        // 主题切换必须即时生效。
+        // MaterialApp 默认用 AnimatedTheme 做 200ms 插值，换成新种子色的那一帧
+        // `Theme.of` 拿到的还是旧色；而页面大多只读全局 `palette`、不依赖 Theme.of，
+        // 它们只会在「状态通知」那一帧重建一次，正好取到插值初值，于是永远停在旧配色。
+        // 把时长压到 0，palette 和 Theme 在同一帧就都到终值。
+        themeAnimationDuration: Duration.zero,
         // MaterialApp.builder 在主题解析之后、子树构建之前执行，
         // 正好用来把当前 ColorScheme 同步进全局色板，明暗切换时它会自动重跑。
         builder: (context, child) {
@@ -82,17 +88,56 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int get index => AppState.instance.tabIndex;
 
-  /// 页面随底栏位置横向移动。用 `jumpTo` 而不是 `animateToPage`：
-  /// 位置由 Deck 的 `_pos` 唯一驱动，拖动时跟手、吸附时一起滑，不会出现两套动画打架。
+  /// 页面随底栏位置横向移动。
   late final PageController _pc =
       PageController(initialPage: AppState.instance.tabIndex);
 
-  static const List<Widget> _pages = <Widget>[
-    HomePage(),
-    ForumsPage(),
-    FeedsPage(),
-    SettingsPage(),
-  ];
+  /// 已经同步到 PageView 的分栏。tabIndex 可能被别的页面直接改
+  /// （版面页点板块就是先 setSource 再 setTab(0)），底栏高亮会跟着变，
+  /// 但 PageView 不会自己动，所以这里统一兜住。
+  int _syncedTab = AppState.instance.tabIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    AppState.instance.addListener(_syncPageToTab);
+  }
+
+  void _syncPageToTab() {
+    final tab = AppState.instance.tabIndex;
+    if (tab == _syncedTab || !_pc.hasClients) return;
+    _syncedTab = tab;
+    final current = _pc.page?.round();
+    if (current == tab) return;
+    _pc.animateToPage(
+      tab,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  /// 页面实例不能长期复用同一个 const 对象。
+  ///
+  /// `updateChild` 判断到新旧 widget 是**同一个实例**时会直接跳过整棵子树，
+  /// 于是主题种子色换了、全局 palette 也刷新了，页面却一次都不重建，
+  /// 表现就是「点了主题没反应」。这里按种子色缓存一份新实例：
+  /// 只有种子变了才换，别的状态通知不去打扰页面。
+  Color _pageSeed = AppState.instance.seed;
+  late List<Widget> _pages = _buildPages();
+
+  List<Widget> _buildPages() {
+    // ignore: prefer_const_constructors, prefer_const_literals_to_create_immutables
+    return <Widget>[HomePage(), ForumsPage(), FeedsPage(), SettingsPage()];
+  }
+
+  List<Widget> get pages {
+    final seed = AppState.instance.seed;
+    if (seed != _pageSeed) {
+      _pageSeed = seed;
+      _pages = _buildPages();
+    }
+    return _pages;
+  }
 
   static const List<NavigationDockDestination> _destinations =
       <NavigationDockDestination>[
@@ -130,20 +175,13 @@ class _ShellState extends State<Shell> {
     );
   }
 
-  /// 切栏：先更新选中态，再让页面横向滑过去。
-  /// FlClash 就是这么分工的——deck 只管自己的弹性，页面切换走 `animateToPage`。
-  void _goTo(int i) {
-    AppState.instance.setTab(i);
-    if (!_pc.hasClients) return;
-    _pc.animateToPage(
-      i,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
-  }
+  /// 切栏：只改状态，真正推 PageView 的动作交给 [_syncPageToTab]。
+  /// 这样无论入口是底栏还是别的页面，都只有一条同步路径。
+  void _goTo(int i) => AppState.instance.setTab(i);
 
   @override
   void dispose() {
+    AppState.instance.removeListener(_syncPageToTab);
     _pc.dispose();
     super.dispose();
   }
@@ -172,8 +210,8 @@ class _ShellState extends State<Shell> {
                   child: PageView.builder(
                     controller: _pc,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _pages.length,
-                    itemBuilder: (_, i) => _KeepAlivePage(child: _pages[i]),
+                    itemCount: pages.length,
+                    itemBuilder: (_, i) => _KeepAlivePage(child: pages[i]),
                   ),
                 ),
               ),
@@ -242,7 +280,7 @@ class _ShellState extends State<Shell> {
             Row(
               children: <Widget>[
                 _Rail(index: index, onTap: (i) => state.setTab(i)),
-                Expanded(child: IndexedStack(index: index, children: _pages)),
+                Expanded(child: IndexedStack(index: index, children: pages)),
               ],
             ),
             Positioned(
