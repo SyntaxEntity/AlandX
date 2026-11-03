@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models.dart';
+import '../screen_corners.dart';
 import '../state.dart';
 import '../widgets.dart';
 import 'cookie_claim.dart';
@@ -372,7 +373,7 @@ class _HeroCard extends StatelessWidget {
 
   /// 展开态/收起态的内容高度。
   static const double expandedContent = 84;
-  static const double collapsedContent = 46;
+  static const double collapsedContent = 40;
 
   /// 上方留白：展开时贴近上文，收起时顶到屏幕最上面。
   static const double expandedGap = 18;
@@ -390,10 +391,10 @@ class _HeroCard extends StatelessWidget {
     final gap = lerpDouble(expandedGap, 0, t)!;
     // 收起时两侧留白收到 0：贴着屏幕边缘的顶栏，不再悬浮。
     final side = lerpDouble(horizontalBase, 0, t)!;
-    // 顶边收成直角（上面是状态栏，圆角会被裁掉），底边保留圆角，
-    // 和页面里 20 圆角的卡片是同一套语言。
+    // 顶边收成直角（上面是状态栏，圆角会被裁掉）；底边收成和本机屏幕同样的
+    // R 角，并且用超椭圆而不是圆弧，才不会显得比屏幕还尖。
     final radiusTop = lerpDouble(24, 0, t)!;
-    final radiusBottom = lerpDouble(24, 22, t)!;
+    final radiusBottom = lerpDouble(24, ScreenCorners.radius, t)!;
     final showExpanded = (1 - t * 2.4).clamp(0.0, 1.0);
     final showCollapsed = ((t - 0.42) * 2.2).clamp(0.0, 1.0);
 
@@ -401,17 +402,17 @@ class _HeroCard extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(side, gap, side, 0),
       child: Container(
         height: h,
-        decoration: BoxDecoration(
+        decoration: ShapeDecoration(
           gradient: LinearGradient(
             colors: <Color>[g1, g2, g3],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(radiusTop),
-            bottom: Radius.circular(radiusBottom),
+          shape: SquircleBottomBorder(
+            topRadius: radiusTop,
+            bottomRadius: radiusBottom,
           ),
-          boxShadow: <BoxShadow>[
+          shadows: <BoxShadow>[
             BoxShadow(
               color: g1.withOpacity(lerpDouble(0.26, 0.32, t)!),
               blurRadius: lerpDouble(28, 18, t)!,
@@ -502,33 +503,71 @@ class _HeroCard extends StatelessWidget {
   }
 
   Widget _collapsed() {
-    // 顶栏高度里含状态栏，所以内容只占最下面那 46。
+    // 顶栏高度里含状态栏，所以内容只占最下面那一条。
     return Align(
       alignment: Alignment.bottomCenter,
       child: SizedBox(
         height: collapsedContent,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const Icon(Icons.dynamic_feed_rounded,
-                  size: 15, color: Colors.white70),
-              const SizedBox(width: 7),
-              Flexible(
-                child: Text(title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white)),
+        child: Stack(
+          children: <Widget>[
+            // 右侧要放刷新按钮，所以内边距右边多留一点，文字才不会压上去。
+            Padding(
+              padding: const EdgeInsets.only(left: 16, right: 46),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const Icon(Icons.dynamic_feed_rounded,
+                      size: 14, color: Colors.white70),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white)),
+                  ),
+                  const SizedBox(width: 6),
+                  Text('$count 条',
+                      style:
+                          const TextStyle(fontSize: 11, color: Colors.white70)),
+                ],
               ),
-              const SizedBox(width: 7),
-              Text('$count 条',
-                  style:
-                      const TextStyle(fontSize: 11.5, color: Colors.white70)),
-            ],
+            ),
+            Positioned(
+              right: 6,
+              top: 0,
+              bottom: 0,
+              child: Center(child: _miniRefresh()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 胶囊里的刷新按钮：和展开态那个大圆钮是同一个动作，只是尺寸跟着收。
+  Widget _miniRefresh() {
+    return SizedBox(
+      width: 30,
+      height: 30,
+      child: Material(
+        color: Colors.white.withOpacity(0.14),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () => onRefresh(),
+          child: Center(
+            child: loading
+                ? const SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 1.8, color: Colors.white),
+                  )
+                : const Icon(Icons.refresh_rounded,
+                    color: Colors.white, size: 17),
           ),
         ),
       ),

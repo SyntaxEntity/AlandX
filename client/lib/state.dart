@@ -41,6 +41,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 外部（例如屏幕圆角探测完成）需要触发一次重建时用。
+  void touch() => notifyListeners();
+
   Source source = const Source.timeline(1, '综合线');
   List<Post> threads = <Post>[];
   bool loading = false;

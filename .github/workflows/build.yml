@@ -91,6 +91,9 @@ jobs:
       # Flutter 模板只在 debug 清单里声明 INTERNET，release 包默认不能联网。
       - name: grant INTERNET permission
         run: python3 scripts/android_manifest.py patch
+      # 屏幕圆角半径要问原生，注入失败也不会影响出包（Dart 侧有兜底值）。
+      - name: inject screen corner channel
+        run: python3 scripts/android_screen_corner.py
       - run: flutter pub get
       - name: build apk
         run: flutter build apk --release --target-platform android-arm64 --split-per-abi

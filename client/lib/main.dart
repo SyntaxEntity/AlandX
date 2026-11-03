@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'state.dart';
 import 'theme.dart';
+import 'screen_corners.dart';
 import 'flclash/navigation_dock.dart';
 import 'pages/compose_page.dart';
 import 'pages/home_page.dart';
@@ -33,6 +34,10 @@ class _XdAppState extends State<XdApp> {
   void initState() {
     super.initState();
     state.init();
+    // 屏幕圆角要去原生问，异步拿到后再刷一次界面；拿不到就保持兜底值。
+    ScreenCorners.ensure().then((_) {
+      if (mounted) state.touch();
+    });
   }
 
   @override
