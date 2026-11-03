@@ -43,15 +43,22 @@ class MainActivity : FlutterActivity() {{
             }}
     }}
 
-    /** 设备屏幕圆角半径，单位 dp；取不到返回 0，由 Dart 侧回退默认值。 */
+    /** 设备屏幕圆角半径，单位 dp；取不到返回 0，由 Dart 侧回退估算值。 */
     private fun cornerRadiusDp(): Double {{
         if (Build.VERSION.SDK_INT < 31) return 0.0
         try {{
-            val insets = window.decorView.rootWindowInsets ?: return 0.0
-            // 1 == WindowInsets.RoundedCornerPosition.TOP_LEFT，四角同值
-            val corner = insets.getRoundedCorner(1) ?: return 0.0
             val density = resources.displayMetrics.density
             if (density <= 0f) return 0.0
+            // 首选 decorView 的 insets，取不到再问 WindowManager（有些 ROM
+            // 在 Activity 刚起来时不回填 rootWindowInsets）。
+            var insets = window?.decorView?.rootWindowInsets
+            if (insets == null) {{
+                val wm = getSystemService(android.content.Context.WINDOW_SERVICE)
+                    as? android.view.WindowManager
+                insets = wm?.currentWindowMetrics?.windowInsets
+            }}
+            // 1 == WindowInsets.RoundedCornerPosition.TOP_LEFT，四角同值
+            val corner = insets?.getRoundedCorner(1) ?: return 0.0
             return (corner.radius / density).toDouble()
         }} catch (e: Throwable) {{
             return 0.0

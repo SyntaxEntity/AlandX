@@ -391,10 +391,12 @@ class _HeroCard extends StatelessWidget {
     final gap = lerpDouble(expandedGap, 0, t)!;
     // 收起时两侧留白收到 0：贴着屏幕边缘的顶栏，不再悬浮。
     final side = lerpDouble(horizontalBase, 0, t)!;
-    // 顶边收成直角（上面是状态栏，圆角会被裁掉）；底边收成和本机屏幕同样的
-    // R 角，并且用超椭圆而不是圆弧，才不会显得比屏幕还尖。
+    // 展开态就是一张普通卡片：四角都是纯圆弧。
+    // 收成顶栏时顶边收直角（贴屏幕顶端，圆角会被裁掉），底边换成和设备屏幕
+    // 同一个 R 角，并用超椭圆收边，和屏幕的连续圆角对上。
     final radiusTop = lerpDouble(24, 0, t)!;
-    final radiusBottom = lerpDouble(24, ScreenCorners.radius, t)!;
+    final radiusBottom = lerpDouble(24, ScreenCorners.resolve(context), t)!;
+    final exponent = lerpDouble(2, 4, t)!;
     final showExpanded = (1 - t * 2.4).clamp(0.0, 1.0);
     final showCollapsed = ((t - 0.42) * 2.2).clamp(0.0, 1.0);
 
@@ -411,6 +413,7 @@ class _HeroCard extends StatelessWidget {
           shape: SquircleBottomBorder(
             topRadius: radiusTop,
             bottomRadius: radiusBottom,
+            exponent: exponent,
           ),
           shadows: <BoxShadow>[
             BoxShadow(

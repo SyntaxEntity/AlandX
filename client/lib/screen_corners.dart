@@ -15,14 +15,18 @@ class ScreenCorners {
 
   static const MethodChannel _channel = MethodChannel('xd/screen');
 
-  /// 主流手机的屏幕圆角大概在这个量级，取不到时兜底。
-  static const double fallback = 28;
-
   /// 从设备读到的原始值；0 表示没读到。
   static double deviceRadius = 0;
 
   /// 实际用于绘制的半径。
-  static double get radius => deviceRadius > 0 ? deviceRadius : fallback;
+  ///
+  /// 原生取不到时不能死守一个常数——不同机型屏幕圆角差得远，
+  /// 按短边比例估算比写死 28 更接近真机（大屏手机 R 角明显更大）。
+  static double resolve(BuildContext context) {
+    if (deviceRadius > 0) return deviceRadius;
+    final side = MediaQuery.sizeOf(context).shortestSide;
+    return (side * 0.09).clamp(26.0, 42.0);
+  }
 
   static bool _loaded = false;
 
@@ -30,12 +34,21 @@ class ScreenCorners {
     if (_loaded) return;
     _loaded = true;
     try {
-      final v = await _channel
-          .invokeMethod<double>('cornerRadius')
-          .timeout(const Duration(milliseconds: 800));
-      if (v != null && v > 0) deviceRadius = v;
+      // 必须等第一帧画完再去问：Activity 还没布局时 rootWindowInsets 是 null，
+      // 拿到的永远是 0，之前就是这样一直回退成默认值的。
+      await WidgetsBinding.instance.endOfFrame;
+      for (var attempt = 0; attempt < 3; attempt++) {
+        final v = await _channel
+            .invokeMethod<double>('cornerRadius')
+            .timeout(const Duration(milliseconds: 800));
+        if (v != null && v > 0) {
+          deviceRadius = v;
+          return;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      }
     } catch (_) {
-      // 桌面端没有这个通道，旧系统也没有圆角信息，保持 fallback 即可。
+      // 桌面端没有这个通道，旧系统也没有圆角信息，保持估算值即可。
     }
   }
 }
@@ -46,13 +59,18 @@ class ScreenCorners {
 /// 显得发尖。这里底部按 |x|^n + |y|^n = 1（n = 4）采样，形状和屏幕 R 角更接近；
 /// 顶部保持直角，因为它贴着屏幕顶端，圆角会被裁掉。
 class SquircleBottomBorder extends ShapeBorder {
-  const SquircleBottomBorder({required this.topRadius, required this.bottomRadius});
+  const SquircleBottomBorder({
+    required this.topRadius,
+    required this.bottomRadius,
+    this.exponent = 4,
+  });
 
   final double topRadius;
   final double bottomRadius;
 
-  /// 超椭圆的指数，4 接近 iOS/大部分 Android 的连续圆角。
-  static const double _n = 4;
+  /// 底角「方」的程度：2 = 正圆弧（纯圆角），4 左右接近手机屏的连续圆角。
+  /// 展开态用 2、收成顶栏时插值到 4，这样卡片阶段它就是普通圆角。
+  final double exponent;
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
@@ -81,10 +99,12 @@ class SquircleBottomBorder extends ShapeBorder {
     // 右下 + 左下：超椭圆
     if (rb > 0) {
       // 右下：从 (right, bottom-rb) 扫到 (right-rb, bottom)
-      _squircle(path, Offset(rect.right - rb, rect.bottom - rb), rb, 0, 90);
+      _squircle(path, Offset(rect.right - rb, rect.bottom - rb), rb, 0, 90,
+          exponent);
       path.lineTo(rect.left + rb, rect.bottom);
       // 左下：从 (left+rb, bottom) 扫到 (left, bottom-rb)，方向必须顺着路径走
-      _squircle(path, Offset(rect.left + rb, rect.bottom - rb), rb, 90, 180);
+      _squircle(path, Offset(rect.left + rb, rect.bottom - rb), rb, 90, 180,
+          exponent);
     } else {
       path.lineTo(rect.right, rect.bottom);
       path.lineTo(rect.left, rect.bottom);
@@ -100,10 +120,11 @@ class SquircleBottomBorder extends ShapeBorder {
   }
 
   /// 沿 |cos|^(2/n)、|sin|^(2/n) 采样，[fromDeg] → [toDeg] 画到 path 上。
-  static void _squircle(
-      Path path, Offset center, double r, double fromDeg, double toDeg) {
+  /// n = 2 时就是正圆弧，n 越大越接近方形。
+  static void _squircle(Path path, Offset center, double r, double fromDeg,
+      double toDeg, double n) {
     const steps = 14;
-    final p = 2 / _n;
+    final p = 2 / n;
     for (var i = 1; i <= steps; i++) {
       final deg = fromDeg + (toDeg - fromDeg) * i / steps;
       final a = deg * math.pi / 180;
@@ -119,15 +140,19 @@ class SquircleBottomBorder extends ShapeBorder {
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
 
   @override
-  ShapeBorder scale(double t) =>
-      SquircleBottomBorder(topRadius: topRadius * t, bottomRadius: bottomRadius * t);
+  ShapeBorder scale(double t) => SquircleBottomBorder(
+        topRadius: topRadius * t,
+        bottomRadius: bottomRadius * t,
+        exponent: exponent,
+      );
 
   @override
   bool operator ==(Object other) =>
       other is SquircleBottomBorder &&
       other.topRadius == topRadius &&
-      other.bottomRadius == bottomRadius;
+      other.bottomRadius == bottomRadius &&
+      other.exponent == exponent;
 
   @override
-  int get hashCode => Object.hash(topRadius, bottomRadius);
+  int get hashCode => Object.hash(topRadius, bottomRadius, exponent);
 }

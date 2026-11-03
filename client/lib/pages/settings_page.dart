@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../cache.dart';
+import '../screen_corners.dart';
 import '../state.dart';
 import '../widgets.dart';
 
@@ -53,7 +54,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     const SizedBox(height: 14),
                     _cacheCard(),
                     const SizedBox(height: 14),
-                    _aboutCard(),
+                    _aboutCard(context),
                   ],
                 ),
               ),
@@ -170,7 +171,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _aboutCard() {
+  Widget _aboutCard(BuildContext context) {
     return SurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,6 +181,14 @@ class _SettingsPageState extends State<SettingsPage> {
           SizedBox(height: 10),
           Text('X岛客户端 · 非官方',
               style: TextStyle(fontSize: 12.5, color: kInk2)),
+          const SizedBox(height: 6),
+          // 临时诊断：用于确认能否从系统读到屏幕圆角，校准完就删。
+          Text(
+            ScreenCorners.deviceRadius > 0
+                ? '屏幕圆角 ${ScreenCorners.deviceRadius.toStringAsFixed(1)} dp · 取自系统'
+                : '屏幕圆角未读到 · 按屏幕尺寸估算 ${ScreenCorners.resolve(context).toStringAsFixed(0)} dp',
+            style: TextStyle(fontSize: 11, color: kInk3),
+          ),
           SizedBox(height: 10),
           Text(
             '• 非官方客户端，与 X岛 官方无关\n'
