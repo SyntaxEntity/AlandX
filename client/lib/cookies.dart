@@ -105,9 +105,12 @@ class CookieStore extends ChangeNotifier {
     );
   }
 
-  Future<Biscuit> add(String raw, String id) async {
-    final b = parse(raw, id);
+  Future<Biscuit> add(String raw, String id, {String? name}) async {
+    var b = parse(raw, id);
     if (b == null) throw ApiException('没能识别这段饼干');
+    if (name != null && name.trim().isNotEmpty) {
+      b = Biscuit(id: b.id, name: name.trim(), cookie: b.cookie);
+    }
     items.add(b);
     activeId ??= b.id;
     await _persist();

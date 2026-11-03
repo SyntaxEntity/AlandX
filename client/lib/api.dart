@@ -38,6 +38,16 @@ class SearchResult {
   const SearchResult(this.hits, this.message);
 }
 
+/// 一次「领取饼干」的登录会话。
+///
+/// 三步必须共用同一个 [session]（PHPSESSID），否则验证码校验一定失败；
+/// [hash] 是登录页里的 `__hash__` 令牌，每张表单一份。
+class CookieClaim {
+  final String session;
+  final String hash;
+  const CookieClaim(this.session, this.hash);
+}
+
 /// X岛接口封装（原生直连）。
 ///
 /// 注意：api.nmb.best 不返回任何 CORS 头，所以 Flutter Web 不能直连；
@@ -477,6 +487,135 @@ class Api {
         .replaceAll('&gt;', '>')
         .replaceAll('&quot;', '"');
     return text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 一键领取饼干
+  //
+  // 饼干（userhash）没有 JSON 接口可领，只能在网页用户中心领取，而用户中心
+  // 要求先登录。所以这里把整条网页流程搬进 App：
+  //
+  //   1. GET 登录页 → 拿 PHPSESSID 会话 + `__hash__` 表单令牌
+  //   2. 带着同一个会话 GET 验证码图 → 用户填
+  //   3. POST 登录表单 → 服务端 Set-Cookie 里就是 userhash
+  //
+  // 关键点：这三步必须共用同一个 PHPSESSID，否则验证码校验一定失败。
+  // ---------------------------------------------------------------------------
+
+  static const String loginPath = '/Member/User/Index/login.html';
+  static const String captchaPath = '/Member/User/Index/verify.html';
+
+  Future<CookieClaim> beginCookieClaim() async {
+    final client = http.Client();
+    try {
+      final res = await client
+          .get(Uri.parse(webBase + loginPath), headers: _headers(null))
+          .timeout(const Duration(seconds: 20));
+      final session = _sessionCookie(res.headers['set-cookie']);
+      if (session == null) {
+        throw ApiException('登录页没有下发会话，站点可能正在调整，稍后再试');
+      }
+      return CookieClaim(session, parseClaimHash(res.body));
+    } on TimeoutException {
+      throw ApiException('连接超时，请检查网络');
+    } finally {
+      client.close();
+    }
+  }
+
+  @visibleForTesting
+  String parseClaimHash(String html) {
+    final m = RegExp(
+      r'''name=["']__hash__["'][^>]*value=["']([^"']+)["']''',
+      caseSensitive: false,
+    ).firstMatch(html);
+    if (m == null) {
+      throw ApiException('登录页结构变了，没找到 __hash__ 令牌');
+    }
+    return m.group(1)!;
+  }
+
+  Future<Uint8List> fetchCaptcha(CookieClaim claim) async {
+    final client = http.Client();
+    try {
+      final res = await client.get(
+        Uri.parse(webBase + captchaPath),
+        headers: <String, String>{
+          ..._headers(null),
+          'Cookie': claim.session,
+          'Referer': webBase + loginPath,
+        },
+      ).timeout(const Duration(seconds: 20));
+      if (res.bodyBytes.isEmpty) throw ApiException('验证码加载失败');
+      return res.bodyBytes;
+    } on TimeoutException {
+      throw ApiException('验证码加载超时');
+    } finally {
+      client.close();
+    }
+  }
+
+  /// 成功后返回 userhash 原始值（URL 编码形式，原样作为 Cookie 值使用）。
+  Future<String> loginForCookie(
+    CookieClaim claim, {
+    required String email,
+    required String password,
+    required String verify,
+  }) async {
+    final client = http.Client();
+    try {
+      final req = http.Request('POST', Uri.parse(webBase + loginPath))
+        // 不跟随跳转：userhash 是挂在 302 响应上的，跟丢了就拿不到了
+        ..followRedirects = false
+        ..headers.addAll(<String, String>{
+          'Cookie': claim.session,
+          'Referer': webBase + loginPath,
+        })
+        ..bodyFields = <String, String>{
+          'email': email,
+          'password': password,
+          'verify': verify,
+          '__hash__': claim.hash,
+        };
+      final res = await http.Response.fromStream(
+        await client.send(req).timeout(const Duration(seconds: 30)),
+      );
+
+      final hash = _userHashOf(res.headers['set-cookie']);
+      if (hash != null) return hash;
+      throw ApiException(parseLoginError(res.body));
+    } on TimeoutException {
+      throw ApiException('登录超时，请稍后重试');
+    } finally {
+      client.close();
+    }
+  }
+
+  static String? _userHashOf(String? setCookie) {
+    if (setCookie == null) return null;
+    final m = RegExp(r'userhash=([^;,\s]+)').firstMatch(setCookie);
+    if (m == null) return null;
+    final v = m.group(1)!;
+    // 服务端用 userhash=deleted 表示清除，不能当成有效饼干
+    if (v == 'deleted' || v.isEmpty) return null;
+    return v;
+  }
+
+  @visibleForTesting
+  String parseLoginError(String html) {
+    final m = RegExp(
+      r'''<p[^>]*class=["'][^"']*\berror\b[^"']*["'][^>]*>(.*?)</p>''',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(html);
+    if (m != null) {
+      final text = _stripHtml(m.group(1) ?? '');
+      if (text.isNotEmpty) return text;
+    }
+    final all = _stripHtml(html);
+    if (all.contains('验证码')) return '验证码错误';
+    if (all.contains('密码')) return '账号或密码不对';
+    return '登录没成功，请检查账号密码';
   }
 
   String imageUrl(Post p, {bool thumb = true}) {

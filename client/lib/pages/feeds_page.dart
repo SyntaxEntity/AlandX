@@ -8,6 +8,7 @@ import '../cookies.dart';
 import '../models.dart';
 import '../state.dart';
 import '../widgets.dart';
+import 'cookie_claim.dart';
 import 'cookie_help.dart';
 import 'thread_page.dart';
 
@@ -109,6 +110,14 @@ class _FeedsPageState extends State<FeedsPage> {
           ],
         ),
         actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              final nav = Navigator.of(context);
+              Navigator.of(ctx).pop();
+              nav.push(CookieClaimPage.route());
+            },
+            child: const Text('一键领取'),
+          ),
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();

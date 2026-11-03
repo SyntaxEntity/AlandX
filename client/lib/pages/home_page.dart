@@ -1,3 +1,5 @@
+import 'dart:ui' show lerpDouble;
+
 import 'package:flutter/material.dart';
 
 import '../models.dart';
@@ -44,7 +46,8 @@ class _HomePageState extends State<HomePage> {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 980),
                     child: Padding(
-                      padding: EdgeInsets.fromLTRB(wide ? 32 : 16, 26, wide ? 32 : 16, 0),
+                      padding: EdgeInsets.fromLTRB(
+                          wide ? 32 : 16, 26, wide ? 32 : 16, 0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
@@ -54,18 +57,35 @@ class _HomePageState extends State<HomePage> {
                             const SizedBox(height: 12),
                             _anonHint(context),
                           ],
-                          const SizedBox(height: 18),
-                          _HeroCard(
-                            title: state.source.name,
-                            loading: state.loading,
-                            latencyMs: state.upstreamMs,
-                            count: state.threads.length,
-                            page: state.page,
-                            onRefresh: _refresh,
-                            onSearch: () => _toast(
-                                '搜索只有网页表单（需 __hash__ 与登录），没有 JSON 接口'),
-                          ),
-                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // banner 单独一个 pinned header：往上滑时收成胶囊，钉在信息流上方。
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _HeroHeaderDelegate(
+                  title: state.source.name,
+                  loading: state.loading,
+                  latencyMs: state.upstreamMs,
+                  count: state.threads.length,
+                  page: state.page,
+                  horizontalBase: wide ? 32 : 16,
+                  onRefresh: _refresh,
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 980),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                          wide ? 32 : 16, 16, wide ? 32 : 16, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
                           _chips(context),
                           if (state.fromCache) ...<Widget>[
                             const SizedBox(height: 10),
@@ -315,24 +335,45 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+/// 首页 banner：既是展开的渐变卡片，也会收成胶囊钉在信息流上方。
+///
+/// [t] 是收拢进度，0 = 完全展开，1 = 完全收成胶囊，由 [SliverPersistentHeader]
+/// 的 shrinkOffset 驱动。几何量线性插值（保证和 header 的高度严格对齐），
+/// 两套内容之间做交叉淡入淡出，看起来就是「被压扁成一颗胶囊」。
 class _HeroCard extends StatelessWidget {
   const _HeroCard({
+    required this.t,
     required this.title,
     required this.loading,
     required this.latencyMs,
     required this.count,
     required this.page,
     required this.onRefresh,
-    required this.onSearch,
+    required this.horizontalBase,
   });
 
+  /// 0 = 展开，1 = 收成胶囊。
+  final double t;
   final String title;
   final bool loading;
   final int latencyMs;
   final int count;
   final int page;
   final Future<void> Function() onRefresh;
-  final VoidCallback onSearch;
+
+  /// 页面统一的左右留白（宽屏 32、窄屏 16）。
+  final double horizontalBase;
+
+  /// 展开态/收起态的内容高度。
+  static const double expandedContent = 84;
+  static const double collapsedContent = 46;
+
+  /// 上方留白：展开时贴近上文，收起时留出悬浮的空隙。
+  static const double expandedGap = 18;
+  static const double collapsedGap = 6;
+
+  static double get maxExtent => expandedContent + expandedGap;
+  static double get minExtent => collapsedContent + collapsedGap;
 
   @override
   Widget build(BuildContext context) {
@@ -341,124 +382,216 @@ class _HeroCard extends StatelessWidget {
     final g2 = Color.lerp(scheme.primary, scheme.tertiary, 0.55)!;
     final g3 = Color.lerp(scheme.primary, const Color(0xFF8B5CF6), 0.85)!;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 24, 20, 24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: <Color>[g1, g2, g3],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: g1.withOpacity(0.28),
-            blurRadius: 40,
-            offset: const Offset(0, 16),
+    // 几何量必须线性：header 的高度按 shrinkOffset 线性收，
+    // 这里对不上就会出现「胶囊没贴着顶」的错位。
+    final h = lerpDouble(expandedContent, collapsedContent, t)!;
+    final gap = lerpDouble(expandedGap, collapsedGap, t)!;
+    // 收起时两侧再退让，宽度收窄成胶囊，而不是单纯把卡片压扁。
+    final side = lerpDouble(0, 44, t)!;
+    final radius = lerpDouble(24, h / 2, t)!;
+    final showExpanded = (1 - t * 2.4).clamp(0.0, 1.0);
+    final showCollapsed = ((t - 0.42) * 2.2).clamp(0.0, 1.0);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          horizontalBase + side, gap, horizontalBase + side, 0),
+      child: Container(
+        height: h,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: <Color>[g1, g2, g3],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: g1.withOpacity(lerpDouble(0.26, 0.32, t)!),
+              blurRadius: lerpDouble(28, 18, t)!,
+              offset: Offset(0, lerpDouble(10, 6, t)!),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: <Widget>[
+            Positioned.fill(
+              child: Opacity(
+                opacity: showExpanded,
+                child: IgnorePointer(
+                  ignoring: showExpanded < 0.5,
+                  child: _expanded(),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: Opacity(
+                opacity: showCollapsed,
+                child: IgnorePointer(
+                  ignoring: showCollapsed < 0.5,
+                  child: _collapsed(),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _expanded() {
+    final meta = loading
+        ? '正在拉取第 $page 页…'
+        : '第 $page 页 · 已加载 $count 条'
+            '${latencyMs == 0 ? '' : ' · ${latencyMs}ms'}';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 0, 12, 0),
       child: Row(
         children: <Widget>[
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 const Text('X 岛 · 匿名揭示板',
                     style: TextStyle(
-                        fontSize: 11,
-                        letterSpacing: 1.2,
+                        fontSize: 10.5,
+                        letterSpacing: 1.1,
                         color: Colors.white70)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 3),
                 Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontSize: 27,
+                        fontSize: 20,
                         fontWeight: FontWeight.w600,
-                        letterSpacing: -0.6,
+                        letterSpacing: -0.4,
                         color: Colors.white)),
-                const SizedBox(height: 4),
-                Text(
-                  loading ? '正在拉取第 $page 页…' : '第 $page 页 · 已加载 $count 条',
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: <Widget>[
-                    _Stat(
-                        value: latencyMs == 0 ? '—' : '${latencyMs}ms',
-                        label: '上游延迟'),
-                    const SizedBox(width: 26),
-                    _Stat(value: '$count', label: '本轮串数'),
-                    const SizedBox(width: 26),
-                    const _Stat(value: '直连', label: '通道'),
-                  ],
-                ),
+                const SizedBox(height: 3),
+                Text(meta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        const TextStyle(fontSize: 11.5, color: Colors.white70)),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 108,
-            height: 108,
-            child: Stack(
-              alignment: Alignment.center,
-              children: <Widget>[
-                SizedBox(
-                  width: 108,
-                  height: 108,
-                  child: CircularProgressIndicator(
-                    value: loading ? null : 0.78,
-                    strokeWidth: 3,
-                    color: Colors.white.withOpacity(0.9),
-                    backgroundColor: Colors.white24,
-                  ),
-                ),
-                Material(
-                  color: Colors.white,
-                  shape: const CircleBorder(),
-                  elevation: 0,
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: () => onRefresh(),
-                    child: SizedBox(
-                      width: 78,
-                      height: 78,
-                      child: Icon(Icons.refresh_rounded,
-                          color: scheme.primary, size: 30),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(width: 10),
+          _refreshDot(),
         ],
+      ),
+    );
+  }
+
+  Widget _collapsed() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          const Icon(Icons.dynamic_feed_rounded,
+              size: 15, color: Colors.white70),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white)),
+          ),
+          const SizedBox(width: 7),
+          Text('$count 条',
+              style: const TextStyle(fontSize: 11.5, color: Colors.white70)),
+        ],
+      ),
+    );
+  }
+
+  Widget _refreshDot() {
+    return SizedBox(
+      width: 44,
+      height: 44,
+      child: Material(
+        color: Colors.white.withOpacity(0.16),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () => onRefresh(),
+          child: Center(
+            child: loading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.refresh_rounded,
+                    color: Colors.white, size: 21),
+          ),
+        ),
       ),
     );
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label});
+/// 让 banner 钉在信息流上方：滑动时收缩成胶囊，停在顶部后继续悬浮。
+class _HeroHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _HeroHeaderDelegate({
+    required this.title,
+    required this.loading,
+    required this.latencyMs,
+    required this.count,
+    required this.page,
+    required this.horizontalBase,
+    required this.onRefresh,
+  });
 
-  final String value;
-  final String label;
+  final String title;
+  final bool loading;
+  final int latencyMs;
+  final int count;
+  final int page;
+  final double horizontalBase;
+  final Future<void> Function() onRefresh;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(value,
-            style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.white)),
-        const SizedBox(height: 2),
-        Text(label,
-            style: const TextStyle(fontSize: 10.5, color: Colors.white60)),
-      ],
+  double get maxExtent => _HeroCard.maxExtent;
+
+  @override
+  double get minExtent => _HeroCard.minExtent;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final span = maxExtent - minExtent;
+    final t = span <= 0 ? 0.0 : (shrinkOffset / span).clamp(0.0, 1.0);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 980),
+        child: _HeroCard(
+          t: t,
+          title: title,
+          loading: loading,
+          latencyMs: latencyMs,
+          count: count,
+          page: page,
+          horizontalBase: horizontalBase,
+          onRefresh: onRefresh,
+        ),
+      ),
     );
   }
+
+  @override
+  bool shouldRebuild(covariant _HeroHeaderDelegate old) =>
+      old.title != title ||
+      old.loading != loading ||
+      old.latencyMs != latencyMs ||
+      old.count != count ||
+      old.page != page ||
+      old.horizontalBase != horizontalBase;
 }
 
 class _Pill extends StatelessWidget {

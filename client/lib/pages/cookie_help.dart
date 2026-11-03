@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../theme.dart';
 import '../widgets.dart';
+import 'cookie_claim.dart';
 
 /// 「如何获取饼干」教程。
 ///
@@ -26,6 +27,14 @@ class CookieHelpPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
         children: <Widget>[
+          // 最省事的一条路：App 内登录，服务端把 userhash 发下来就自动存好。
+          FilledButton.icon(
+            onPressed: () =>
+                Navigator.of(context).push(CookieClaimPage.route()),
+            icon: const Icon(Icons.bolt_outlined, size: 18),
+            label: const Text('一键领取饼干（用账号登录自动拿）'),
+          ),
+          const SizedBox(height: 14),
           _lead(context),
           const SizedBox(height: 14),
           _step(
